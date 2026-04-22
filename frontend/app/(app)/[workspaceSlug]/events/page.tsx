@@ -8,29 +8,35 @@ export default async function EventsPage({ params }: { params: { workspaceSlug: 
   const events = await apiGet<Event[]>(`/workspaces/${workspace.id}/events`);
 
   return (
-    <div className="card">
-      <h2>Events</h2>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Type</th>
-            <th>Starts</th>
-            <th>Venue</th>
-          </tr>
-        </thead>
-        <tbody>
-          {events.map((event) => (
-            <tr key={event.id}>
-              <td>{event.title}</td>
-              <td>{event.event_type}</td>
-              <td>{event.starts_at}</td>
-              <td>{event.venue || "-"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {events.length === 0 && <p className="muted">No events created yet.</p>}
-    </div>
+    <section className="atelier-stack">
+      <header className="atelier-pagehead row">
+        <div>
+          <small>Events</small>
+          <h1>Events Calendar</h1>
+          <p>{workspace.name}</p>
+        </div>
+      </header>
+
+      <article className="atelier-card">
+        {events.length === 0 ? (
+          <p className="atelier-empty">No events created yet.</p>
+        ) : (
+          <div className="event-list">
+            {events.map((event) => (
+              <div key={event.id} className="event-item">
+                <div>
+                  <h4>{event.title}</h4>
+                  <p>{event.event_type}</p>
+                </div>
+                <div className="event-meta">
+                  <span>{event.starts_at}</span>
+                  <strong>{event.venue || "Venue TBD"}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </article>
+    </section>
   );
 }

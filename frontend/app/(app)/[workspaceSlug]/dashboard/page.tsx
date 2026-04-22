@@ -48,85 +48,92 @@ export default async function DashboardPage({
     );
   }
 
-  const activeCampaign = campaigns.find((c) => c.status === "active") || null;
-  const totalRaised = campaigns.reduce((sum, c) => sum + c.raised_amount, 0);
+  const activeCampaign = campaigns.find((c) => c.status === "active") || campaigns[0] || null;
 
   return (
-    <>
-      <div className="panel" style={{ marginBottom: 12 }}>
-        <strong style={{ color: "#a16207" }}>Attention:</strong>{" "}
-        <span className="muted">42 members still marked as unpaid in this demo view.</span>
-      </div>
+    <section className="atelier-stack">
+      <header className="atelier-pagehead">
+        <h1>Good morning, Oluwaseun</h1>
+        <p>Here is what is happening with {workspace.name} today.</p>
+      </header>
 
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="label">Workspace</div>
-          <div className="value" style={{ fontSize: "1.2rem" }}>
-            {workspace.name}
+      <section className="atelier-alert">
+        <div>
+          <h3>Dues Deadline Approaching</h3>
+          <p>42 members have not paid their 2024/2025 dues. Deadline: Dec 15.</p>
+        </div>
+        <button type="button" className="atelier-inline-cta">
+          View Defaulters
+        </button>
+      </section>
+
+      <section className="atelier-metrics">
+        <article className="metric-primary">
+          <small>Total Members</small>
+          <strong>187</strong>
+        </article>
+
+        <article className="metric-card">
+          <small>Dues Paid</small>
+          <strong>77%</strong>
+          <span>+12% from last cycle</span>
+        </article>
+
+        <article className="metric-card">
+          <small>Events this Session</small>
+          <strong>{events.length}</strong>
+          <span>Current semester count</span>
+        </article>
+
+        <article className="metric-card">
+          <small>Campaign Progress</small>
+          <strong>
+            {activeCampaign
+              ? `${Math.min(
+                  100,
+                  Math.round((activeCampaign.raised_amount / Math.max(activeCampaign.target_amount, 1)) * 100),
+                )}%`
+              : "0%"}
+          </strong>
+          <span>{activeCampaign ? activeCampaign.name : "No active campaign"}</span>
+        </article>
+      </section>
+
+      <section className="atelier-grid-2-1">
+        <article className="atelier-card">
+          <div className="atelier-card-head">
+            <h3>Upcoming Events</h3>
           </div>
-          <small className="muted">{workspace.description || "No description yet."}</small>
-        </div>
-
-        <div className="kpi-card">
-          <div className="label">Events This Session</div>
-          <div className="value">{events.length}</div>
-          <small className="muted">Tracked from events module</small>
-        </div>
-
-        <div className="kpi-card">
-          <div className="label">Campaigns</div>
-          <div className="value">{campaigns.length}</div>
-          <small className="muted">{activeCampaign ? "Active campaign running" : "No active campaign"}</small>
-        </div>
-
-        <div className="kpi-card">
-          <div className="label">Total Raised</div>
-          <div className="value">₦{totalRaised.toLocaleString()}</div>
-          <small className="muted">Across all campaigns</small>
-        </div>
-      </div>
-
-      <div className="content-grid">
-        <div className="panel">
-          <h3>Upcoming Events</h3>
           {events.length === 0 ? (
-            <p className="muted">No events yet.</p>
+            <p className="atelier-empty">No events available yet.</p>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Date</th>
-                  <th>RSVPs</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.slice(0, 5).map((event) => (
-                  <tr key={event.id}>
-                    <td>{event.title}</td>
-                    <td>{event.starts_at}</td>
-                    <td>{event.rsvp_count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="event-list">
+              {events.slice(0, 4).map((event) => (
+                <div key={event.id} className="event-item">
+                  <div>
+                    <h4>{event.title}</h4>
+                    <p>{event.venue || "Venue TBD"}</p>
+                  </div>
+                  <div className="event-meta">
+                    <span>{event.starts_at}</span>
+                    <strong>{event.rsvp_count} RSVPs</strong>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
-        </div>
+        </article>
 
-        <div className="mini-list">
-          <div className="panel campaign-block">
-            <h3 style={{ marginTop: 0 }}>Annual Campaign Snapshot</h3>
-            {!activeCampaign ? (
-              <p style={{ margin: 0, opacity: 0.92 }}>No active campaign yet.</p>
-            ) : (
+        <div className="atelier-column">
+          <article className="atelier-card campaign-spotlight">
+            <h3>Annual Campaign Snapshot</h3>
+            {activeCampaign ? (
               <>
-                <p style={{ marginBottom: 8 }}>
-                  <strong>{activeCampaign.name}</strong>
+                <p className="campaign-name">{activeCampaign.name}</p>
+                <p className="campaign-amount">
+                  NGN {activeCampaign.raised_amount.toLocaleString()} / NGN {activeCampaign.target_amount.toLocaleString()}
                 </p>
-                <p style={{ marginTop: 0 }}>
-                  ₦{activeCampaign.raised_amount.toLocaleString()} / ₦{activeCampaign.target_amount.toLocaleString()}
-                </p>
-                <div className="campaign-progress">
+                <div className="campaign-track">
                   <span
                     style={{
                       width: `${Math.min(
@@ -137,26 +144,26 @@ export default async function DashboardPage({
                   />
                 </div>
               </>
+            ) : (
+              <p className="atelier-empty">No campaign created yet.</p>
             )}
-          </div>
+          </article>
 
-          <div className="panel">
-            <h3 style={{ marginTop: 0 }}>Pinned Notes</h3>
-            <div className="mini-item">
-              <strong>Annual Dinner - Final Ticket Push</strong>
-              <p className="muted" style={{ marginBottom: 0 }}>
-                Reminder sent to all levels. Deadline this Friday.
-              </p>
+          <article className="atelier-card">
+            <h3>Pinned Notes</h3>
+            <div className="note-list">
+              <div className="note-item">
+                <strong>Annual Dinner Ticket Push</strong>
+                <p>Reminder sent to all levels. Final deadline this Friday.</p>
+              </div>
+              <div className="note-item">
+                <strong>Dues Extension Notice</strong>
+                <p>Session dues deadline shifted to accommodate exams.</p>
+              </div>
             </div>
-            <div className="mini-item">
-              <strong>Dues Extension Notice</strong>
-              <p className="muted" style={{ marginBottom: 0 }}>
-                Session dues deadline shifted to accommodate exams.
-              </p>
-            </div>
-          </div>
+          </article>
         </div>
-      </div>
-    </>
+      </section>
+    </section>
   );
 }

@@ -1,190 +1,157 @@
 import Link from "next/link";
 
-const modules = [
-  { title: "Dues Tracker", text: "Collect dues, review receipts, and export defaulter reports quickly." },
-  { title: "Events & Programs", text: "Create events, track attendance, and publish shareable pages with previews." },
-  { title: "Meeting Hub", text: "Send invite links, manage agenda items, and keep structured minutes." },
-  { title: "Campaigns", text: "Run fundraising campaigns with live target-vs-raised progress." },
-  { title: "Budget Planner", text: "Track planned versus actual spend across categories in one place." },
-  { title: "Smart Links + Portal", text: "Host branded links and a public portal for every student body." },
+const valueCards = [
+  {
+    title: "For excos",
+    text: "One dashboard to manage dues, events, meetings, campaigns, and member communication.",
+  },
+  {
+    title: "For members",
+    text: "Clear visibility into dues status, events, announcements, and fundraising progress.",
+  },
+  {
+    title: "For student bodies",
+    text: "A branded portal and short links that instantly upgrade your public presence.",
+  },
+  {
+    title: "For competitions",
+    text: "AI receipt verification reduces treasurer workload and increases trust.",
+  },
 ];
 
 export default function HomePage() {
   return (
-    <main className="landing-shell">
-      <div className="landing-nav">
-        <div className="brand">
-          Quo<span>rum</span>
-        </div>
-        <div className="landing-links">
-          <Link href="/login" className="btn btn-ghost">
-            Sign in
+    <main className="stitch-landing">
+      <nav className="stitch-nav">
+        <div className="stitch-nav-inner">
+          <Link href="/" className="stitch-logo">
+            Quorum
           </Link>
-          <Link href="/register" className="btn btn-primary">
-            Get started free
-          </Link>
+          <div className="stitch-links">
+            <a href="#features">Features</a>
+            <a href="#solutions">Solutions</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#resources">Resources</a>
+          </div>
+          <div className="stitch-actions">
+            <Link href="/login" className="stitch-login">
+              Login
+            </Link>
+            <Link href="/register" className="stitch-join">
+              Join Quorum
+            </Link>
+          </div>
         </div>
-      </div>
+      </nav>
 
-      <section className="hero-card">
+      <header className="stitch-hero" id="features">
         <div>
-          <div className="hero-badge">
-            <span className="hero-badge-dot" />
-            Now live for Nigerian student bodies
-          </div>
-          <h1 className="hero-title">Run your student body like a team.</h1>
-          <p className="hero-sub">
-            Quorum is the all-in-one platform for excos: dues collection, events, fundraising campaigns, meeting invites, and member management. One dashboard. Zero WhatsApp chaos.
+          <h1>
+            Where student bodies <span>get things done.</span>
+          </h1>
+          <p>
+            The premium platform for university leadership governance, seamless verification, and unified
+            communication.
           </p>
-          <div className="hero-actions">
-            <Link href="/register" className="btn btn-primary">
-              Register your body
+          <div className="stitch-hero-ctas">
+            <Link href="/register" className="stitch-hero-primary">
+              Join Quorum
             </Link>
-            <Link href="/csc-body/dashboard" className="btn btn-ghost">
-              View demo dashboard
-            </Link>
+            <a href="#solutions" className="stitch-hero-secondary">
+              Book a Demo
+            </a>
           </div>
         </div>
+        <div className="stitch-hero-art">
+          <div className="stitch-hero-preview">
+            <h3>Student Ops Overview</h3>
+            <p>Unified panel for dues, events, campaigns, and communications.</p>
+            <div className="stitch-bars">
+              <span style={{ height: "45%" }} />
+              <span style={{ height: "63%" }} />
+              <span style={{ height: "78%" }} />
+              <span style={{ height: "96%" }} />
+              <span style={{ height: "70%" }} />
+            </div>
+            <small>+42% engagement</small>
+          </div>
+        </div>
+      </header>
 
-        <aside className="hero-panel">
-          <h3 style={{ marginTop: 0, fontFamily: "Space Grotesk, sans-serif" }}>Live Snapshot</h3>
-          <p className="muted" style={{ color: "rgba(255,255,255,0.75)" }}>
-            CSC Department Body · 2024/2025
+      <section className="stitch-proof" id="resources">
+        <p>Trusted by visionary student leaders across</p>
+        <div>
+          <span>UNILAG</span>
+          <span>OAU</span>
+          <span>UI</span>
+          <span>ABU</span>
+          <span>COVENANT</span>
+        </div>
+      </section>
+
+      <section className="stitch-values" id="solutions">
+        <div className="stitch-intro">
+          <h2>
+            Designed for impact, not administration.
+          </h2>
+          <p>
+            Step away from spreadsheets. Experience a curated toolkit that treats student management as an art form.
           </p>
-          <div className="hero-kpis">
-            <div className="hero-kpi">
-              <small>Members</small>
-              <br />
-              <strong>187</strong>
-            </div>
-            <div className="hero-kpi">
-              <small>Dues Paid</small>
-              <br />
-              <strong>77%</strong>
-            </div>
-            <div className="hero-kpi">
-              <small>Events</small>
-              <br />
-              <strong>9</strong>
-            </div>
-            <div className="hero-kpi">
-              <small>Campaign</small>
-              <br />
-              <strong>63%</strong>
-            </div>
-          </div>
-        </aside>
-      </section>
+        </div>
 
-      <section className="stats-strip">
-        <div className="stat-card">
-          <strong>200+</strong>
-          <small className="muted">Student bodies onboarded</small>
-        </div>
-        <div className="stat-card">
-          <strong>₦48M</strong>
-          <small className="muted">Dues tracked on Quorum</small>
-        </div>
-        <div className="stat-card">
-          <strong>12K</strong>
-          <small className="muted">Active student members</small>
-        </div>
-        <div className="stat-card">
-          <strong>94%</strong>
-          <small className="muted">Treasurer time saved</small>
-        </div>
-      </section>
-
-      <section className="section-panel">
-        <h3 className="section-title" style={{ marginTop: 0 }}>Without Quorum vs With Quorum</h3>
-        <div className="split">
-          <div className="tile">
-            <h4>Without Quorum</h4>
-            <p className="muted">Dues updates in noisy group chats, manual receipt checks, missing meeting minutes, and no fundraising transparency.</p>
-          </div>
-          <div className="tile">
-            <h4>With Quorum</h4>
-            <p className="muted">Live defaulter lists, AI-assisted verification queues, structured meeting archives, and public campaign progress links.</p>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h3 className="section-title">Core Modules</h3>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Built around the exact operational pain points your document describes.
-        </p>
-        <div className="module-grid">
-          {modules.map((m) => (
-            <div className="module" key={m.title}>
-              <h4>{m.title}</h4>
-              <p>{m.text}</p>
-            </div>
+        <div className="stitch-value-grid">
+          {valueCards.map((item) => (
+            <article key={item.title} className="stitch-value-card">
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+            </article>
           ))}
         </div>
-      </section>
 
-      <section className="section-panel">
-        <h3 className="section-title" style={{ marginTop: 0 }}>What excos are saying</h3>
-        <div className="quote-grid">
-          <article className="quote">
-            <p>"AI receipt verification alone saved our treasurer hours every dues cycle."</p>
-            <small className="muted">Oluwaseun Adeyemi · CSC President</small>
+        <div className="stitch-bento" id="pricing">
+          <article className="stitch-bento-large">
+            <h3>AI Receipt Verification</h3>
+            <p>Automate financial governance. Scan and validate receipts against expected values instantly.</p>
+            <div className="stitch-chip">Receipt #8924 Verified</div>
           </article>
-          <article className="quote">
-            <p>"Our annual dinner campaign became trackable and transparent in one week."</p>
-            <small className="muted">Kemi Adewole · Finance Secretary</small>
+
+          <article className="stitch-bento-blue">
+            <h3>Smart Link Shortener</h3>
+            <p>Create custom, trackable links for every initiative.</p>
           </article>
-          <article className="quote">
-            <p>"The portal page made us look organized and professional instantly."</p>
-            <small className="muted">Chinedu Ezeobi · PRO</small>
+
+          <article className="stitch-bento-card">
+            <h3>Integrated Budgeting</h3>
+            <p>Ledger updates connected to campaigns and events in real-time.</p>
+          </article>
+
+          <article className="stitch-bento-wide">
+            <div>
+              <h3>Editorial Analytics</h3>
+              <p>See your session story clearly with engagement and participation trends.</p>
+            </div>
+            <div className="stitch-mini-chart">
+              <span style={{ height: "36%" }} />
+              <span style={{ height: "56%" }} />
+              <span style={{ height: "74%" }} />
+              <span style={{ height: "100%" }} />
+              <span style={{ height: "68%" }} />
+            </div>
           </article>
         </div>
       </section>
 
-      <section className="section-panel">
-        <h3 className="section-title" style={{ marginTop: 0 }}>Create your workspace</h3>
-        <div className="signup-card">
-          <div className="form-grid">
-            <div className="form-group">
-              <label>First name</label>
-              <input type="text" placeholder="Oluwaseun" />
-            </div>
-            <div className="form-group">
-              <label>Last name</label>
-              <input type="text" placeholder="Adeyemi" />
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Email</label>
-            <input type="email" placeholder="seun@school.edu.ng" />
-          </div>
-          <div className="form-grid">
-            <div className="form-group">
-              <label>Body type</label>
-              <select defaultValue="">
-                <option value="" disabled>
-                  Select type
-                </option>
-                <option>Department body</option>
-                <option>Faculty body</option>
-                <option>Student Union</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>University</label>
-              <input type="text" placeholder="e.g. UNILAG" />
-            </div>
-          </div>
-          <Link href="/register" className="btn btn-primary" style={{ width: "100%" }}>
-            Continue to full signup
-          </Link>
+      <footer className="stitch-footer">
+        <div>
+          <strong>Quorum</strong>
+          <p>© 2026 Quorum Student Systems. Empowering student leadership.</p>
         </div>
-      </section>
-
-      <footer className="footer">
-        <span>© 2026 Quorum</span>
-        <span>Built for Nigerian student bodies</span>
+        <div>
+          <a href="#">Terms</a>
+          <a href="#">Privacy</a>
+          <a href="#">Accessibility</a>
+          <a href="#">Support</a>
+        </div>
       </footer>
     </main>
   );

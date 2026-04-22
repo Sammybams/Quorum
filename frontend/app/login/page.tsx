@@ -1,43 +1,112 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
+
+import { apiPost } from "@/lib/api";
+
+type LoginResponse = {
+  workspace_slug: string;
+  workspace_name: string;
+  member_id: number;
+  member_name: string;
+  member_role: string;
+};
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [workspaceSlug, setWorkspaceSlug] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await apiPost<LoginResponse, { workspace_slug: string; email: string; password: string }>(
+        "/auth/login",
+        {
+          workspace_slug: workspaceSlug.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+        },
+      );
+
+      router.push(`/${result.workspace_slug}/dashboard`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to sign in.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main className="auth-shell auth-shell-centered">
-      <section className="auth-card-compact">
-        <div className="auth-brand">
-          Quo<span>rum</span>
+    <main className="auth-split-shell">
+      <section className="auth-split-left">
+        <div className="auth-overlay" />
+        <div className="auth-left-content">
+          <Link className="auth-wordmark" href="/">
+            Quorum
+          </Link>
+          <h1>Empowering student leadership through editorial management.</h1>
+          <p>The Academic Atelier for modern student organizations.</p>
         </div>
+      </section>
 
-        <h1 className="auth-title">Sign in to your workspace</h1>
-        <p className="muted auth-subtitle">Use your account details to continue.</p>
+      <section className="auth-split-right">
+        <div className="auth-panel">
+          <h2>Welcome back</h2>
+          <p>Please enter your details to sign in.</p>
 
-        <form>
-          <div className="field">
-            <label htmlFor="email">Email</label>
-            <input id="email" type="email" placeholder="you@school.edu.ng" autoComplete="email" />
-          </div>
-
-          <div className="field">
-            <label htmlFor="password">Password</label>
-            <input id="password" type="password" placeholder="Enter your password" autoComplete="current-password" />
-          </div>
-
-          <div className="auth-row">
-            <label className="remember-check">
-              <input type="checkbox" />
-              <span>Remember me</span>
+          <form onSubmit={onSubmit} className="auth-form-stack">
+            <label>
+              Workspace slug
+              <input
+                type="text"
+                placeholder="e.g. csc-body"
+                value={workspaceSlug}
+                onChange={(e) => setWorkspaceSlug(e.target.value)}
+                required
+              />
             </label>
-            <a href="#" className="auth-link">Forgot password?</a>
-          </div>
 
-          <button className="btn btn-primary" style={{ width: "100%", marginTop: 12 }} type="submit">
-            Sign in
-          </button>
-        </form>
+            <label>
+              Email or matric number
+              <input
+                type="text"
+                placeholder="you@school.edu.ng"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </label>
 
-        <p className="auth-footnote">
-          New to Quorum? <Link href="/register" className="auth-link">Create an account</Link>
-        </p>
+            <label>
+              Password
+              <input
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
+
+            {error ? <p className="auth-error">{error}</p> : null}
+
+            <button className="auth-primary-btn" type="submit" disabled={loading}>
+              {loading ? "Signing in..." : "Sign in to Quorum"}
+            </button>
+          </form>
+
+          <p className="auth-hint">
+            New body? <Link href="/register">Create your workspace</Link>
+          </p>
+        </div>
       </section>
     </main>
   );

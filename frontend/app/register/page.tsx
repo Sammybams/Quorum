@@ -1,75 +1,215 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
+
+import { apiPost } from "@/lib/api";
+
+type WorkspaceResponse = {
+  id: number;
+  name: string;
+  slug: string;
+};
+
+type MemberResponse = {
+  id: number;
+  workspace_id: number;
+};
+
+function slugify(input: string) {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
+}
 
 export default function RegisterPage() {
+  const router = useRouter();
+
+  const [step, setStep] = useState(1);
+  const [organizationName, setOrganizationName] = useState("");
+  const [university, setUniversity] = useState("");
+  const [faculty, setFaculty] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [role, setRole] = useState("exco");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const workspaceSlug = useMemo(() => slugify(organizationName || university || "workspace"), [organizationName, university]);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (step === 1) {
+      setStep(2);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const descriptionParts = [university, faculty].filter(Boolean);
+      const workspace = await apiPost<WorkspaceResponse, { name: string; slug: string; description?: string }>("/workspaces", {
+        name: organizationName,
+        slug: workspaceSlug,
+        description: descriptionParts.length ? descriptionParts.join(" · ") : undefined,
+      });
+
+      await apiPost<MemberResponse, { full_name: string; email: string; role: string; level?: string }>(
+        `/workspaces/${workspace.id}/members`,
+        {
+          full_name: adminName,
+          email: adminEmail.trim().toLowerCase(),
+          role,
+          level: "Admin",
+        },
+      );
+
+      router.push(`/${workspace.slug}/dashboard`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to create workspace.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main className="auth-shell">
-      <section className="auth-card">
-        <aside className="auth-promo">
-          <h2 style={{ marginTop: 0 }}>Launch Your Body Workspace</h2>
-          <p>
-            Setup a dedicated dashboard for your department, faculty, or union with role-based access and public sharing pages.
-          </p>
-          <div style={{ marginTop: 14, padding: 12, border: "1px solid rgba(255,255,255,0.22)", borderRadius: 12 }}>
-            <strong style={{ fontSize: "0.9rem" }}>What you get in v1:</strong>
-            <p style={{ marginBottom: 0, marginTop: 6 }}>Dues tracking, meetings, events analytics, campaign progress, and smart links.</p>
+    <main className="signup-shell">
+      <header className="signup-head">
+        <Link className="auth-wordmark" href="/">
+          Quorum
+        </Link>
+        <span>Need help?</span>
+      </header>
+
+      <section className="signup-content">
+        <aside className="signup-context">
+          <div className="signup-steps">
+            <span className={step >= 1 ? "active" : ""}>1 Organization</span>
+            <span className={step >= 2 ? "active" : ""}>2 Admin</span>
           </div>
+          <h1>Set the stage for your student body.</h1>
+          <p>
+            Establishing your Quorum workspace takes less than two minutes. Start with organization details,
+            then the admin account.
+          </p>
         </aside>
 
-        <div className="auth-form">
-          <h1 style={{ marginTop: 0 }}>Create Account</h1>
-          <p className="muted">Step 1 of 2: account + workspace setup</p>
+        <section className="signup-form-panel">
+          <h2>{step === 1 ? "Organization Details" : "Admin Details"}</h2>
 
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="first-name">First name</label>
-              <input id="first-name" type="text" placeholder="Samuel" />
+          <form onSubmit={onSubmit} className="auth-form-stack">
+            {step === 1 ? (
+              <>
+                <label>
+                  Organization name
+                  <input
+                    type="text"
+                    placeholder="e.g. Undergraduate Student Union"
+                    value={organizationName}
+                    onChange={(e) => setOrganizationName(e.target.value)}
+                    required
+                  />
+                </label>
+
+                <label>
+                  University / Institution
+                  <input
+                    type="text"
+                    placeholder="Search for your institution"
+                    value={university}
+                    onChange={(e) => setUniversity(e.target.value)}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Faculty / Department (optional)
+                  <input
+                    type="text"
+                    placeholder="e.g. Faculty of Arts"
+                    value={faculty}
+                    onChange={(e) => setFaculty(e.target.value)}
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <label>
+                  Full name
+                  <input
+                    type="text"
+                    placeholder="e.g. Oluwaseun Adeyemi"
+                    value={adminName}
+                    onChange={(e) => setAdminName(e.target.value)}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Email
+                  <input
+                    type="email"
+                    placeholder="you@school.edu.ng"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Role
+                  <select value={role} onChange={(e) => setRole(e.target.value)}>
+                    <option value="exco">Exco officer</option>
+                    <option value="president">President</option>
+                    <option value="secretary">Secretary</option>
+                  </select>
+                </label>
+
+                <label>
+                  Password (UI only for now)
+                  <input
+                    type="password"
+                    placeholder="Create password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </label>
+
+                <div className="signup-meta">Workspace slug: {workspaceSlug || "workspace"}</div>
+              </>
+            )}
+
+            {error ? <p className="auth-error">{error}</p> : null}
+
+            <div className="signup-actions">
+              {step === 2 ? (
+                <button type="button" className="atelier-btn-ghost" onClick={() => setStep(1)}>
+                  Back
+                </button>
+              ) : (
+                <Link href="/" className="atelier-btn-ghost">
+                  Cancel setup
+                </Link>
+              )}
+
+              <button type="submit" className="auth-primary-btn" disabled={loading}>
+                {loading ? "Creating workspace..." : step === 1 ? "Continue to Admin" : "Create Workspace"}
+              </button>
             </div>
-            <div className="field">
-              <label htmlFor="last-name">Last name</label>
-              <input id="last-name" type="text" placeholder="Bamgbola" />
-            </div>
-          </div>
+          </form>
 
-          <div className="field">
-            <label htmlFor="email">Email</label>
-            <input id="email" type="email" placeholder="you@school.edu.ng" />
-          </div>
-
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="password">Password</label>
-              <input id="password" type="password" placeholder="Create password" />
-            </div>
-            <div className="field">
-              <label htmlFor="role">Role</label>
-              <select id="role" defaultValue="exco">
-                <option value="exco">Exco Officer</option>
-                <option value="member">General Member</option>
-              </select>
-            </div>
-          </div>
-
-          <hr style={{ border: 0, borderTop: "1px solid #e6e9f0", margin: "8px 0 14px" }} />
-
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="workspace-name">Workspace name</label>
-              <input id="workspace-name" type="text" placeholder="CSC Student Body" />
-            </div>
-            <div className="field">
-              <label htmlFor="workspace-slug">Workspace slug</label>
-              <input id="workspace-slug" type="text" placeholder="csc-body" />
-            </div>
-          </div>
-
-          <button className="btn btn-primary" style={{ width: "100%" }}>
-            Create Workspace
-          </button>
-
-          <p className="muted" style={{ marginTop: 14 }}>
-            Already have an account? <Link href="/login" style={{ color: "#1a56db", fontWeight: 600 }}>Sign in</Link>
+          <p className="auth-hint">
+            Already have access? <Link href="/login">Sign in</Link>
           </p>
-        </div>
+        </section>
       </section>
     </main>
   );

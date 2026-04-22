@@ -11,45 +11,71 @@ export default function WorkspaceLayout({
   const base = `/${params.workspaceSlug}`;
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          Quo<span>rum</span>
+    <div className="atelier-shell">
+      <aside className="atelier-sidenav">
+        <div className="atelier-brand-wrap">
+          <div className="atelier-brand-icon">Q</div>
+          <div>
+            <div className="atelier-brand">Quorum</div>
+            <div className="atelier-brand-sub">Student Body Admin</div>
+          </div>
         </div>
-        <div className="workspace-chip">Workspace: {params.workspaceSlug}</div>
-        <Link className="nav-link" href={`${base}/dashboard`}>
-          Dashboard
-        </Link>
-        <Link className="nav-link" href={`${base}/events`}>
-          Events
-        </Link>
-        <Link className="nav-link" href={`${base}/events/new`}>
-          Create Event
-        </Link>
-        <Link className="nav-link" href={`${base}/dues`}>
-          Dues
-        </Link>
-        <Link className="nav-link" href={`${base}/campaigns`}>
-          Campaigns
-        </Link>
-        <Link className="nav-link" href={`${base}/links`}>
-          Links
-        </Link>
+
+        <button className="atelier-btn-primary" type="button">
+          New Campaign
+        </button>
+
+        <nav className="atelier-navlist">
+          <Link className="atelier-nav-item" href={`${base}/dashboard`}>
+            Dashboard
+          </Link>
+          <Link className="atelier-nav-item" href={`${base}/members`}>
+            Members
+          </Link>
+          <Link className="atelier-nav-item" href={`${base}/events`}>
+            Events
+          </Link>
+          <Link className="atelier-nav-item" href={`${base}/campaigns`}>
+            Fundraising
+          </Link>
+          <Link className="atelier-nav-item" href={`${base}/dues`}>
+            Dues
+          </Link>
+          <Link className="atelier-nav-item" href={`${base}/links`}>
+            Links
+          </Link>
+        </nav>
+
+        <div className="atelier-nav-foot">
+          <a className="atelier-nav-item" href="#" aria-disabled="true">
+            Settings
+          </a>
+          <a className="atelier-nav-item" href="#" aria-disabled="true">
+            Support
+          </a>
+        </div>
       </aside>
 
-      <div className="app-main">
-        <div className="main-head">
-          <div>
-            <h1>Quorum Workspace</h1>
-            <small className="muted">Student body operations dashboard</small>
+      <div className="atelier-main-wrap">
+        <header className="atelier-topbar">
+          <div className="atelier-topbar-left">
+            <div className="atelier-workspace-pill">{params.workspaceSlug}</div>
+            <div className="atelier-search">
+              <input type="text" placeholder="Search workspace" />
+            </div>
           </div>
-          <div>
-            <Link href="/" className="btn btn-ghost">
+
+          <div className="atelier-topbar-right">
+            <Link href={`${base}/events/new`} className="atelier-btn-secondary">
+              Create Event
+            </Link>
+            <Link href="/" className="atelier-btn-ghost">
               Landing
             </Link>
           </div>
-        </div>
-        {children}
+        </header>
+
+        <main className="atelier-canvas">{children}</main>
       </div>
     </div>
   );
