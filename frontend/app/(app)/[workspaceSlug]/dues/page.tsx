@@ -8,19 +8,43 @@ export default async function DuesPage({ params }: { params: { workspaceSlug: st
   const cycles = await apiGet<DuesCycle[]>(`/workspaces/${workspace.id}/dues-cycles`);
 
   return (
-    <div className="card">
-      <h2>Dues Cycles</h2>
-      {cycles.length === 0 ? (
-        <p className="muted">No dues cycle yet.</p>
-      ) : (
-        <ul>
-          {cycles.map((cycle) => (
-            <li key={cycle.id}>
-              {cycle.name} - {cycle.amount} {cycle.deadline ? `(Deadline: ${cycle.deadline})` : ""}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <section className="page-stack">
+      <header className="page-head row">
+        <div>
+          <p className="eyebrow">Dues</p>
+          <h1>Dues cycles</h1>
+          <p>{workspace.name}</p>
+        </div>
+        <button type="button" className="btn-primary">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            add
+          </span>
+          New Cycle
+        </button>
+      </header>
+
+      <article className="panel-card">
+        {cycles.length === 0 ? (
+          <div className="empty-state">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              receipt_long
+            </span>
+            <h2>No dues cycle yet</h2>
+            <p>Create a cycle before collecting or tracking member dues.</p>
+          </div>
+        ) : (
+          <div className="mini-list roomy">
+            {cycles.map((cycle) => (
+              <div key={cycle.id}>
+                <span>{cycle.name}</span>
+                <strong>
+                  NGN {cycle.amount.toLocaleString()} {cycle.deadline ? `· ${cycle.deadline}` : ""}
+                </strong>
+              </div>
+            ))}
+          </div>
+        )}
+      </article>
+    </section>
   );
 }

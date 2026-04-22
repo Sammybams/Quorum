@@ -1,5 +1,20 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+
+import { clearSession, readSession, type QuorumSession } from "@/lib/session";
+
+const navItems = [
+  { label: "Dashboard", icon: "dashboard", href: "dashboard" },
+  { label: "Members", icon: "group", href: "members" },
+  { label: "Events", icon: "event", href: "events" },
+  { label: "Fundraising", icon: "payments", href: "campaigns" },
+  { label: "Dues", icon: "receipt_long", href: "dues" },
+  { label: "Links", icon: "link", href: "links" },
+];
 
 export default function WorkspaceLayout({
   children,
@@ -9,73 +24,127 @@ export default function WorkspaceLayout({
   params: { workspaceSlug: string };
 }) {
   const base = `/${params.workspaceSlug}`;
+  const router = useRouter();
+  const [session, setSession] = useState<QuorumSession | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  useEffect(() => {
+    setSession(readSession());
+  }, []);
+
+  function signOut() {
+    clearSession();
+    router.push("/login");
+  }
+
+  const initials = session?.member_name
+    ? session.member_name
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "Q";
 
   return (
-    <div className="atelier-shell">
-      <aside className="atelier-sidenav">
-        <div className="atelier-brand-wrap">
-          <div className="atelier-brand-icon">Q</div>
-          <div>
-            <div className="atelier-brand">Quorum</div>
-            <div className="atelier-brand-sub">Student Body Admin</div>
-          </div>
-        </div>
+    <div className="app-shell">
+      <aside className="side-nav">
+        <Link href={`${base}/dashboard`} className="brand-block">
+          <span className="brand-mark">Q</span>
+          <span>
+            <strong>Quorum</strong>
+            <small>Student Body Admin</small>
+          </span>
+        </Link>
 
-        <button className="atelier-btn-primary" type="button">
-          New Campaign
-        </button>
-
-        <nav className="atelier-navlist">
-          <Link className="atelier-nav-item" href={`${base}/dashboard`}>
-            Dashboard
-          </Link>
-          <Link className="atelier-nav-item" href={`${base}/members`}>
-            Members
-          </Link>
-          <Link className="atelier-nav-item" href={`${base}/events`}>
-            Events
-          </Link>
-          <Link className="atelier-nav-item" href={`${base}/campaigns`}>
-            Fundraising
-          </Link>
-          <Link className="atelier-nav-item" href={`${base}/dues`}>
-            Dues
-          </Link>
-          <Link className="atelier-nav-item" href={`${base}/links`}>
-            Links
-          </Link>
+        <nav className="nav-list" aria-label="Workspace">
+          {navItems.map((item) => (
+            <Link key={item.href} className="nav-item" href={`${base}/${item.href}`}>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {item.icon}
+              </span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
         </nav>
 
-        <div className="atelier-nav-foot">
-          <a className="atelier-nav-item" href="#" aria-disabled="true">
-            Settings
-          </a>
-          <a className="atelier-nav-item" href="#" aria-disabled="true">
-            Support
-          </a>
+        <div className="side-nav-actions">
+          <Link href={`${base}/campaigns`} className="side-action primary">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              add
+            </span>
+            <span>New Campaign</span>
+          </Link>
+          <button type="button" className="side-action" onClick={signOut}>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              logout
+            </span>
+            <span>Sign out</span>
+          </button>
         </div>
       </aside>
 
-      <div className="atelier-main-wrap">
-        <header className="atelier-topbar">
-          <div className="atelier-topbar-left">
-            <div className="atelier-workspace-pill">{params.workspaceSlug}</div>
-            <div className="atelier-search">
-              <input type="text" placeholder="Search workspace" />
-            </div>
+      <div className="workspace-frame">
+        <header className="topbar">
+          <div className="workspace-pill">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              expand_more
+            </span>
+            {params.workspaceSlug}
           </div>
-
-          <div className="atelier-topbar-right">
-            <Link href={`${base}/events/new`} className="atelier-btn-secondary">
+          <div className="topbar-actions">
+            <button type="button" className="icon-button" aria-label="Notifications">
+              <span className="material-symbols-outlined" aria-hidden="true">
+                notifications
+              </span>
+            </button>
+            <Link href={`${base}/events/new`} className="btn-secondary">
+              <span className="material-symbols-outlined" aria-hidden="true">
+                add
+              </span>
               Create Event
             </Link>
-            <Link href="/" className="atelier-btn-ghost">
-              Landing
-            </Link>
+            <div className="profile-menu-wrap">
+              <button
+                type="button"
+                className="avatar-chip"
+                aria-label="Open profile menu"
+                aria-expanded={profileOpen}
+                onClick={() => setProfileOpen((value) => !value)}
+              >
+                {initials}
+              </button>
+              {profileOpen ? (
+                <div className="profile-menu">
+                  <div>
+                    <strong>{session?.member_name || "Quorum user"}</strong>
+                    <span>{session?.member_role || "Workspace member"}</span>
+                  </div>
+                  <Link href={`${base}/dashboard`}>
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      person
+                    </span>
+                    Profile
+                  </Link>
+                  <Link href={`${base}/dashboard`}>
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      settings
+                    </span>
+                    Settings
+                  </Link>
+                  <button type="button" onClick={signOut}>
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      logout
+                    </span>
+                    Sign out
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 
-        <main className="atelier-canvas">{children}</main>
+        <main className="workspace-canvas">{children}</main>
       </div>
     </div>
   );

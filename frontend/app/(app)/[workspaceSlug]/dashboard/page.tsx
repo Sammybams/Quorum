@@ -1,169 +1,203 @@
+import Link from "next/link";
+
 import { apiGet } from "@/lib/api";
 
-type Workspace = {
-  id: number;
-  name: string;
-  slug: string;
-  description?: string;
+type Overview = {
+  workspace: { id: number; name: string; slug: string; description?: string };
+  counts: {
+    members: number;
+    dues_cycles: number;
+    events: number;
+    campaigns: number;
+    links: number;
+    paid_members: number;
+    pending_members: number;
+  };
+  recent_events: Array<{ id: number; title: string; starts_at: string; venue?: string; rsvp_count: number }>;
+  active_campaigns: Array<{
+    id: number;
+    name: string;
+    target_amount: number;
+    raised_amount: number;
+    status: string;
+  }>;
+  dues_cycles: Array<{ id: number; name: string; amount: number; deadline?: string }>;
+  links: Array<{ id: number; slug: string; click_count: number; is_active: boolean }>;
 };
 
-type Event = {
-  id: number;
-  title: string;
-  starts_at: string;
-  venue?: string;
-  rsvp_count: number;
-};
-
-type Campaign = {
-  id: number;
-  name: string;
-  target_amount: number;
-  raised_amount: number;
-  status: string;
-};
-
-export default async function DashboardPage({
-  params,
-}: {
-  params: { workspaceSlug: string };
-}) {
-  let workspace: Workspace | null = null;
-  let events: Event[] = [];
-  let campaigns: Campaign[] = [];
+export default async function DashboardPage({ params }: { params: { workspaceSlug: string } }) {
+  let overview: Overview;
 
   try {
-    workspace = await apiGet<Workspace>(`/workspaces/slug/${params.workspaceSlug}`);
-    events = await apiGet<Event[]>(`/workspaces/${workspace.id}/events`);
-    campaigns = await apiGet<Campaign[]>(`/workspaces/${workspace.id}/campaigns`);
+    overview = await apiGet<Overview>(`/workspaces/slug/${params.workspaceSlug}/overview`);
   } catch {
     return (
-      <section className="panel">
-        <h3>Workspace Not Found Yet</h3>
-        <p className="muted">
-          Create a workspace using the backend endpoint, then reload this page with the correct slug.
-        </p>
-        <code>POST /api/v1/workspaces</code>
+      <section className="empty-state full">
+        <span className="material-symbols-outlined" aria-hidden="true">
+          search_off
+        </span>
+        <h1>Workspace not found</h1>
+        <p>Create a workspace first, then return to its dashboard.</p>
+        <Link href="/register" className="btn-primary">
+          Create workspace
+        </Link>
       </section>
     );
   }
 
-  const activeCampaign = campaigns.find((c) => c.status === "active") || campaigns[0] || null;
+  const { workspace, counts } = overview;
+  const activeCampaign = overview.active_campaigns.find((campaign) => campaign.status === "active") || null;
+  const duesPercent = counts.members > 0 ? Math.round((counts.paid_members / counts.members) * 100) : 0;
+  const campaignProgress = activeCampaign
+    ? Math.min(100, Math.round((activeCampaign.raised_amount / Math.max(activeCampaign.target_amount, 1)) * 100))
+    : 0;
 
   return (
-    <section className="atelier-stack">
-      <header className="atelier-pagehead">
-        <h1>Good morning, Oluwaseun</h1>
-        <p>Here is what is happening with {workspace.name} today.</p>
+    <section className="page-stack">
+      <header className="page-head">
+        <p className="eyebrow">Home dashboard</p>
+        <h1>{workspace.name}</h1>
+        <p>{workspace.description || "Your workspace is ready. Add your real members and launch the first activity."}</p>
       </header>
 
-      <section className="atelier-alert">
-        <div>
-          <h3>Dues Deadline Approaching</h3>
-          <p>42 members have not paid their 2024/2025 dues. Deadline: Dec 15.</p>
-        </div>
-        <button type="button" className="atelier-inline-cta">
-          View Defaulters
-        </button>
-      </section>
-
-      <section className="atelier-metrics">
-        <article className="metric-primary">
-          <small>Total Members</small>
-          <strong>187</strong>
-        </article>
-
-        <article className="metric-card">
-          <small>Dues Paid</small>
-          <strong>77%</strong>
-          <span>+12% from last cycle</span>
-        </article>
-
-        <article className="metric-card">
-          <small>Events this Session</small>
-          <strong>{events.length}</strong>
-          <span>Current semester count</span>
-        </article>
-
-        <article className="metric-card">
-          <small>Campaign Progress</small>
-          <strong>
-            {activeCampaign
-              ? `${Math.min(
-                  100,
-                  Math.round((activeCampaign.raised_amount / Math.max(activeCampaign.target_amount, 1)) * 100),
-                )}%`
-              : "0%"}
-          </strong>
-          <span>{activeCampaign ? activeCampaign.name : "No active campaign"}</span>
-        </article>
-      </section>
-
-      <section className="atelier-grid-2-1">
-        <article className="atelier-card">
-          <div className="atelier-card-head">
-            <h3>Upcoming Events</h3>
+      {counts.members <= 1 && counts.events === 0 && counts.campaigns === 0 ? (
+        <section className="onboarding-panel">
+          <div>
+            <p className="eyebrow">Fresh workspace</p>
+            <h2>Start with the essentials</h2>
+            <p>No demo data has been added. Build this workspace with your own members, events, dues, and campaigns.</p>
           </div>
-          {events.length === 0 ? (
-            <p className="atelier-empty">No events available yet.</p>
+          <div className="onboarding-actions">
+            <Link href={`/${workspace.slug}/members`} className="btn-primary">
+              Add members
+            </Link>
+            <Link href={`/${workspace.slug}/events/new`} className="btn-secondary">
+              Create event
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="metrics-grid">
+        <article className="metric-card primary">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            group
+          </span>
+          <small>Total members</small>
+          <strong>{counts.members}</strong>
+        </article>
+        <article className="metric-card">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            payments
+          </span>
+          <small>Dues paid</small>
+          <strong>{duesPercent}%</strong>
+          <p>{counts.pending_members} pending</p>
+        </article>
+        <article className="metric-card">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            event
+          </span>
+          <small>Events</small>
+          <strong>{counts.events}</strong>
+          <p>Published activities</p>
+        </article>
+        <article className="metric-card">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            monitoring
+          </span>
+          <small>Campaign progress</small>
+          <strong>{campaignProgress}%</strong>
+          <p>{activeCampaign?.name || "No active campaign"}</p>
+        </article>
+      </section>
+
+      <section className="content-grid">
+        <article className="panel-card large">
+          <div className="card-head">
+            <div>
+              <p className="eyebrow">Calendar</p>
+              <h2>Upcoming events</h2>
+            </div>
+            <Link href={`/${workspace.slug}/events`} className="subtle-link">
+              View all
+            </Link>
+          </div>
+          {overview.recent_events.length === 0 ? (
+            <EmptyBlock icon="event_busy" title="No events yet" text="Create your first event and it will appear here." />
           ) : (
-            <div className="event-list">
-              {events.slice(0, 4).map((event) => (
-                <div key={event.id} className="event-item">
+            <div className="activity-list">
+              {overview.recent_events.map((event) => (
+                <div key={event.id} className="activity-item">
                   <div>
-                    <h4>{event.title}</h4>
+                    <h3>{event.title}</h3>
                     <p>{event.venue || "Venue TBD"}</p>
                   </div>
-                  <div className="event-meta">
-                    <span>{event.starts_at}</span>
-                    <strong>{event.rsvp_count} RSVPs</strong>
-                  </div>
+                  <span>{event.starts_at}</span>
                 </div>
               ))}
             </div>
           )}
         </article>
 
-        <div className="atelier-column">
-          <article className="atelier-card campaign-spotlight">
-            <h3>Annual Campaign Snapshot</h3>
+        <div className="side-stack">
+          <article className="panel-card">
+            <div className="card-head compact">
+              <h2>Fundraising</h2>
+              <Link href={`/${workspace.slug}/campaigns`} className="subtle-link">
+                Open
+              </Link>
+            </div>
             {activeCampaign ? (
-              <>
-                <p className="campaign-name">{activeCampaign.name}</p>
-                <p className="campaign-amount">
-                  NGN {activeCampaign.raised_amount.toLocaleString()} / NGN {activeCampaign.target_amount.toLocaleString()}
+              <div className="campaign-widget">
+                <strong>{activeCampaign.name}</strong>
+                <p>
+                  NGN {activeCampaign.raised_amount.toLocaleString()} / NGN{" "}
+                  {activeCampaign.target_amount.toLocaleString()}
                 </p>
-                <div className="campaign-track">
-                  <span
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        Math.round((activeCampaign.raised_amount / Math.max(activeCampaign.target_amount, 1)) * 100),
-                      )}%`,
-                    }}
-                  />
+                <div className="progress-track">
+                  <span style={{ width: `${campaignProgress}%` }} />
                 </div>
-              </>
+              </div>
             ) : (
-              <p className="atelier-empty">No campaign created yet.</p>
+              <EmptyBlock icon="payments" title="No campaign" text="Create a campaign when fundraising begins." />
             )}
           </article>
 
-          <article className="atelier-card">
-            <h3>Pinned Notes</h3>
-            <div className="note-list">
-              <div className="note-item">
-                <strong>Annual Dinner Ticket Push</strong>
-                <p>Reminder sent to all levels. Final deadline this Friday.</p>
-              </div>
-              <div className="note-item">
-                <strong>Dues Extension Notice</strong>
-                <p>Session dues deadline shifted to accommodate exams.</p>
-              </div>
+          <article className="panel-card">
+            <div className="card-head compact">
+              <h2>Dues cycles</h2>
+              <Link href={`/${workspace.slug}/dues`} className="subtle-link">
+                Open
+              </Link>
             </div>
+            {overview.dues_cycles.length === 0 ? (
+              <EmptyBlock icon="receipt_long" title="No dues cycle" text="Set a dues cycle before tracking payments." />
+            ) : (
+              <div className="mini-list">
+                {overview.dues_cycles.map((cycle) => (
+                  <div key={cycle.id}>
+                    <span>{cycle.name}</span>
+                    <strong>NGN {cycle.amount.toLocaleString()}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
           </article>
         </div>
       </section>
     </section>
+  );
+}
+
+function EmptyBlock({ icon, title, text }: { icon: string; title: string; text: string }) {
+  return (
+    <div className="empty-block">
+      <span className="material-symbols-outlined" aria-hidden="true">
+        {icon}
+      </span>
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </div>
   );
 }

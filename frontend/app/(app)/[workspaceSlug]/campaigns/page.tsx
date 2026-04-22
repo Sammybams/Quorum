@@ -7,115 +7,76 @@ export default async function CampaignsPage({ params }: { params: { workspaceSlu
   const workspace = await apiGet<Workspace>(`/workspaces/slug/${params.workspaceSlug}`);
   const campaigns = await apiGet<Campaign[]>(`/workspaces/${workspace.id}/campaigns`);
   const campaign = campaigns.find((item) => item.status === "active") || campaigns[0] || null;
-
   const progress = campaign
     ? Math.min(100, Math.round((campaign.raised_amount / Math.max(campaign.target_amount, 1)) * 100))
     : 0;
 
   return (
-    <section className="atelier-stack">
-      <header className="atelier-pagehead row">
+    <section className="page-stack">
+      <header className="page-head row">
         <div>
-          <small>Fundraising Campaign</small>
-          <h1>{campaign ? campaign.name : "No active campaign"}</h1>
+          <p className="eyebrow">Fundraising</p>
+          <h1>{campaign ? campaign.name : "Campaigns"}</h1>
           <p>{workspace.name}</p>
         </div>
+        <button type="button" className="btn-primary">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            add
+          </span>
+          New Campaign
+        </button>
       </header>
 
       {campaign ? (
         <>
           <section className="fund-grid">
             <article className="fund-hero">
-              <div className="fund-hero-head">
-                <div>
-                  <small>Raised so far</small>
-                  <strong>NGN {campaign.raised_amount.toLocaleString()}</strong>
-                </div>
-                <div>
-                  <small>Target</small>
-                  <strong>NGN {campaign.target_amount.toLocaleString()}</strong>
-                </div>
+              <div>
+                <p className="eyebrow">Raised so far</p>
+                <strong>NGN {campaign.raised_amount.toLocaleString()}</strong>
               </div>
-              <p>{progress}% of goal reached</p>
-              <div className="campaign-track">
-                <span style={{ width: `${progress}%` }} />
+              <div>
+                <p>{progress}% of NGN {campaign.target_amount.toLocaleString()}</p>
+                <div className="progress-track">
+                  <span style={{ width: `${progress}%` }} />
+                </div>
               </div>
             </article>
 
-            <article className="atelier-card">
-              <h3>Funding Streams</h3>
-              <div className="stream-list">
+            <article className="panel-card">
+              <h2>Campaign status</h2>
+              <div className="mini-list">
                 <div>
-                  <span>Sponsorships</span>
-                  <strong>60%</strong>
+                  <span>Status</span>
+                  <strong>{campaign.status}</strong>
                 </div>
                 <div>
-                  <span>Donations</span>
-                  <strong>25%</strong>
-                </div>
-                <div>
-                  <span>Tickets</span>
-                  <strong>15%</strong>
+                  <span>Public slug</span>
+                  <strong>{campaign.slug}</strong>
                 </div>
               </div>
             </article>
           </section>
 
-          <section className="fund-grid two">
-            <article className="atelier-card">
-              <div className="atelier-card-head">
-                <h3>AI Receipt Queue</h3>
-                <small>Pending Verification (3)</small>
-              </div>
-              <div className="queue-list">
-                <div className="queue-item">
-                  <div>
-                    <strong>Amara Obi</strong>
-                    <p>NGN 5,000 - AI verified</p>
-                  </div>
-                  <div className="queue-actions">
-                    <button type="button">Review</button>
-                    <button type="button">Confirm</button>
-                  </div>
-                </div>
-                <div className="queue-item warn">
-                  <div>
-                    <strong>Bayo Adesanya</strong>
-                    <p>Mismatch: claimed 10,000 vs AI read 5,000</p>
-                  </div>
-                  <div className="queue-actions">
-                    <button type="button">Inspect</button>
-                    <button type="button">Flag</button>
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            <article className="atelier-card">
-              <div className="atelier-card-head">
-                <h3>Recent Ledger</h3>
-              </div>
-              <div className="ledger-list">
-                <div>
-                  <span>Seun Adeyemi</span>
-                  <strong>NGN 25,000</strong>
-                </div>
-                <div>
-                  <span>Class of 300L</span>
-                  <strong>NGN 18,500</strong>
-                </div>
-                <div>
-                  <span>Ticket Sales</span>
-                  <strong>NGN 42,000</strong>
-                </div>
-              </div>
-            </article>
-          </section>
+          <article className="panel-card">
+            <div className="empty-block">
+              <span className="material-symbols-outlined" aria-hidden="true">
+                receipt_long
+              </span>
+              <h3>No contribution ledger yet</h3>
+              <p>Verified donations and receipt activity will appear here once contributions are recorded.</p>
+            </div>
+          </article>
         </>
       ) : (
-        <article className="atelier-card">
-          <h3>No campaigns found</h3>
-          <p className="atelier-empty">Create one from the sidebar button to populate this dashboard.</p>
+        <article className="panel-card">
+          <div className="empty-state">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              payments
+            </span>
+            <h2>No campaigns yet</h2>
+            <p>Create a fundraising campaign when your student body is ready to receive contributions.</p>
+          </div>
         </article>
       )}
     </section>

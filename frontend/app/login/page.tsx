@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { apiPost } from "@/lib/api";
-
-type LoginResponse = {
-  workspace_slug: string;
-  workspace_name: string;
-  member_id: number;
-  member_name: string;
-  member_role: string;
-};
+import { saveSession, type QuorumSession } from "@/lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,15 +21,16 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const result = await apiPost<LoginResponse, { workspace_slug: string; email: string; password: string }>(
+      const result = await apiPost<QuorumSession, { workspace_slug?: string; email: string; password: string }>(
         "/auth/login",
         {
-          workspace_slug: workspaceSlug.trim(),
+          workspace_slug: workspaceSlug.trim() || undefined,
           email: email.trim().toLowerCase(),
           password,
         },
       );
 
+      saveSession(result);
       router.push(`/${result.workspace_slug}/dashboard`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in.");
@@ -46,65 +40,88 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-split-shell">
-      <section className="auth-split-left">
-        <div className="auth-overlay" />
-        <div className="auth-left-content">
-          <Link className="auth-wordmark" href="/">
-            Quorum
-          </Link>
-          <h1>Empowering student leadership through editorial management.</h1>
-          <p>The Academic Atelier for modern student organizations.</p>
+    <main className="auth-screen">
+      <section className="auth-visual">
+        <Link className="wordmark" href="/">
+          Quorum
+        </Link>
+        <div className="auth-visual-copy">
+          <p className="eyebrow">Student body operations</p>
+          <h1>Where student bodies get things done.</h1>
+          <p>Coordinate members, events, dues, campaigns, and public links from one considered workspace.</p>
         </div>
       </section>
 
-      <section className="auth-split-right">
-        <div className="auth-panel">
-          <h2>Welcome back</h2>
-          <p>Please enter your details to sign in.</p>
+      <section className="auth-form-area">
+        <div className="auth-card">
+          <div className="auth-card-head">
+            <p className="eyebrow">Secure access</p>
+            <h2>Welcome back</h2>
+            <p>Sign in with the email attached to your Quorum workspace.</p>
+          </div>
 
-          <form onSubmit={onSubmit} className="auth-form-stack">
+          <form onSubmit={onSubmit} className="form-stack">
             <label>
               Workspace slug
-              <input
-                type="text"
-                placeholder="e.g. csc-body"
-                value={workspaceSlug}
-                onChange={(e) => setWorkspaceSlug(e.target.value)}
-                required
-              />
+              <span className="input-shell">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  domain
+                </span>
+                <input
+                  type="text"
+                  placeholder="e.g. csc-body"
+                  value={workspaceSlug}
+                  onChange={(event) => setWorkspaceSlug(event.target.value)}
+                  required
+                />
+              </span>
             </label>
 
             <label>
               Email or matric number
-              <input
-                type="text"
-                placeholder="you@school.edu.ng"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <span className="input-shell">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  person
+                </span>
+                <input
+                  type="text"
+                  placeholder="you@school.edu.ng"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                />
+              </span>
             </label>
 
             <label>
-              Password
-              <input
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <span className="label-row">
+                Password
+                <a href="#" aria-disabled="true">
+                  Forgot password?
+                </a>
+              </span>
+              <span className="input-shell">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  lock
+                </span>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </span>
             </label>
 
-            {error ? <p className="auth-error">{error}</p> : null}
+            {error ? <p className="form-error">{error}</p> : null}
 
-            <button className="auth-primary-btn" type="submit" disabled={loading}>
+            <button className="btn-primary wide" type="submit" disabled={loading}>
               {loading ? "Signing in..." : "Sign in to Quorum"}
             </button>
           </form>
 
-          <p className="auth-hint">
-            New body? <Link href="/register">Create your workspace</Link>
+          <p className="auth-footnote">
+            New student body? <Link href="/register">Create your workspace</Link>
           </p>
         </div>
       </section>

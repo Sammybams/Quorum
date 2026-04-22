@@ -1,21 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { apiPost } from "@/lib/api";
-
-type WorkspaceResponse = {
-  id: number;
-  name: string;
-  slug: string;
-};
-
-type MemberResponse = {
-  id: number;
-  workspace_id: number;
-};
+import { saveSession, type QuorumSession } from "@/lib/session";
 
 function slugify(input: string) {
   return input
@@ -24,55 +13,86 @@ function slugify(input: string) {
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
     .slice(0, 80);
 }
 
 export default function RegisterPage() {
-  const router = useRouter();
-
   const [step, setStep] = useState(1);
   const [organizationName, setOrganizationName] = useState("");
   const [university, setUniversity] = useState("");
+  const [bodyType, setBodyType] = useState("department_body");
   const [faculty, setFaculty] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
-  const [role, setRole] = useState("exco");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [role, setRole] = useState("super_admin");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [workspaceSlug, setWorkspaceSlug] = useState("workspace");
+  const [slugEdited, setSlugEdited] = useState(false);
+  const [createdSession, setCreatedSession] = useState<QuorumSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const workspaceSlug = useMemo(() => slugify(organizationName || university || "workspace"), [organizationName, university]);
+  const suggestedSlug = useMemo(
+    () => slugify(organizationName || university || "workspace") || "workspace",
+    [organizationName, university],
+  );
+
+  useEffect(() => {
+    if (!slugEdited) {
+      setWorkspaceSlug(suggestedSlug);
+    }
+  }, [slugEdited, suggestedSlug]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError(null);
 
     if (step === 1) {
       setStep(2);
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
-    setError(null);
 
     try {
-      const descriptionParts = [university, faculty].filter(Boolean);
-      const workspace = await apiPost<WorkspaceResponse, { name: string; slug: string; description?: string }>("/workspaces", {
-        name: organizationName,
-        slug: workspaceSlug,
-        description: descriptionParts.length ? descriptionParts.join(" · ") : undefined,
+      const result = await apiPost<
+        QuorumSession,
+        {
+          organization_name: string;
+          workspace_slug: string;
+          university?: string;
+          body_type?: string;
+          faculty?: string;
+          admin_name: string;
+          admin_email: string;
+          phone_number?: string;
+          admin_role: string;
+          password: string;
+        }
+      >("/auth/register", {
+        organization_name: organizationName.trim(),
+        workspace_slug: slugify(workspaceSlug),
+        university: university.trim() || undefined,
+        body_type: bodyType,
+        faculty: faculty.trim() || undefined,
+        admin_name: adminName.trim(),
+        admin_email: adminEmail.trim().toLowerCase(),
+        phone_number: phoneNumber.trim() || undefined,
+        admin_role: role,
+        password,
       });
 
-      await apiPost<MemberResponse, { full_name: string; email: string; role: string; level?: string }>(
-        `/workspaces/${workspace.id}/members`,
-        {
-          full_name: adminName,
-          email: adminEmail.trim().toLowerCase(),
-          role,
-          level: "Admin",
-        },
-      );
-
-      router.push(`/${workspace.slug}/dashboard`);
+      saveSession(result);
+      setCreatedSession(result);
+      setStep(3);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create workspace.");
     } finally {
@@ -80,135 +100,254 @@ export default function RegisterPage() {
     }
   }
 
+  if (createdSession) {
+    return (
+      <main className="signup-screen">
+        <header className="signup-top">
+          <Link className="wordmark" href="/">
+            Quorum
+          </Link>
+          <Link href="/login" className="subtle-link">
+            Sign in
+          </Link>
+        </header>
+
+        <section className="signup-grid">
+          <aside className="signup-copy">
+            <div className="stepper" aria-label="Signup progress">
+              {["Organization", "Admin", "Ready"].map((label) => (
+                <span key={label} className="active">
+                  <b>{label === "Organization" ? 1 : label === "Admin" ? 2 : 3}</b>
+                  {label}
+                </span>
+              ))}
+            </div>
+            <p className="eyebrow">Workspace ready</p>
+            <h1>Your workspace is ready.</h1>
+            <p>Verify your email when verification is enabled, then start inviting real members.</p>
+          </aside>
+
+          <section className="signup-card success-card">
+            <span className="material-symbols-outlined success-icon" aria-hidden="true">
+              check_circle
+            </span>
+            <h2>{createdSession.workspace_name}</h2>
+            <p>Your workspace lives at:</p>
+            <div className="portal-preview">quorum.ng/{createdSession.workspace_slug}</div>
+            <div className="form-actions">
+              <Link href="/login" className="btn-ghost">
+                Back to login
+              </Link>
+              <Link href={`/${createdSession.workspace_slug}/dashboard`} className="btn-primary">
+                Open workspace
+              </Link>
+            </div>
+          </section>
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main className="signup-shell">
-      <header className="signup-head">
-        <Link className="auth-wordmark" href="/">
+    <main className="signup-screen">
+      <header className="signup-top">
+        <Link className="wordmark" href="/">
           Quorum
         </Link>
-        <span>Need help?</span>
+        <Link href="/login" className="subtle-link">
+          Sign in
+        </Link>
       </header>
 
-      <section className="signup-content">
-        <aside className="signup-context">
-          <div className="signup-steps">
-            <span className={step >= 1 ? "active" : ""}>1 Organization</span>
-            <span className={step >= 2 ? "active" : ""}>2 Admin</span>
+      <section className="signup-grid">
+        <aside className="signup-copy">
+          <div className="stepper" aria-label="Signup progress">
+            {["Organization", "Admin", "Ready"].map((label, index) => (
+              <span key={label} className={step >= index + 1 ? "active" : ""}>
+                <b>{index + 1}</b>
+                {label}
+              </span>
+            ))}
           </div>
+          <p className="eyebrow">Workspace setup</p>
           <h1>Set the stage for your student body.</h1>
-          <p>
-            Establishing your Quorum workspace takes less than two minutes. Start with organization details,
-            then the admin account.
-          </p>
+          <p>Start with the organization, then create the lead admin account for the workspace.</p>
         </aside>
 
-        <section className="signup-form-panel">
-          <h2>{step === 1 ? "Organization Details" : "Admin Details"}</h2>
+        <section className="signup-card">
+          <h2>{step === 1 ? "Organization details" : "Admin details"}</h2>
 
-          <form onSubmit={onSubmit} className="auth-form-stack">
+          <form onSubmit={onSubmit} className="form-stack">
             {step === 1 ? (
               <>
                 <label>
                   Organization name
-                  <input
-                    type="text"
-                    placeholder="e.g. Undergraduate Student Union"
-                    value={organizationName}
-                    onChange={(e) => setOrganizationName(e.target.value)}
-                    required
-                  />
+                  <span className="input-shell">
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      groups
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Undergraduate Student Union"
+                      value={organizationName}
+                      onChange={(event) => setOrganizationName(event.target.value)}
+                      required
+                    />
+                  </span>
                 </label>
 
                 <label>
                   University / Institution
-                  <input
-                    type="text"
-                    placeholder="Search for your institution"
-                    value={university}
-                    onChange={(e) => setUniversity(e.target.value)}
-                    required
-                  />
+                  <span className="input-shell">
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      school
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Search for your institution"
+                      value={university}
+                      onChange={(event) => setUniversity(event.target.value)}
+                      required
+                    />
+                  </span>
                 </label>
 
-                <label>
-                  Faculty / Department (optional)
-                  <input
-                    type="text"
-                    placeholder="e.g. Faculty of Arts"
-                    value={faculty}
-                    onChange={(e) => setFaculty(e.target.value)}
-                  />
-                </label>
+                <div className="form-two">
+                  <label>
+                    Body type
+                    <select value={bodyType} onChange={(event) => setBodyType(event.target.value)}>
+                      <option value="department_body">Department body</option>
+                      <option value="faculty_body">Faculty body</option>
+                      <option value="student_union">Student Union</option>
+                      <option value="club_association">Club or Association</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Faculty / Department
+                    <input
+                      type="text"
+                      placeholder="Faculty of Arts"
+                      value={faculty}
+                      onChange={(event) => setFaculty(event.target.value)}
+                    />
+                  </label>
+                </div>
               </>
-            ) : (
+            ) : null}
+
+            {step === 2 ? (
               <>
                 <label>
-                  Full name
-                  <input
-                    type="text"
-                    placeholder="e.g. Oluwaseun Adeyemi"
-                    value={adminName}
-                    onChange={(e) => setAdminName(e.target.value)}
-                    required
-                  />
+                  Your name
+                  <span className="input-shell">
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      badge
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Oluwaseun Adeyemi"
+                      value={adminName}
+                      onChange={(event) => setAdminName(event.target.value)}
+                      required
+                    />
+                  </span>
                 </label>
 
                 <label>
-                  Email
-                  <input
-                    type="email"
-                    placeholder="you@school.edu.ng"
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    required
-                  />
+                  School email
+                  <span className="input-shell">
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      alternate_email
+                    </span>
+                    <input
+                      type="email"
+                      placeholder="you@school.edu.ng"
+                      value={adminEmail}
+                      onChange={(event) => setAdminEmail(event.target.value)}
+                      required
+                    />
+                  </span>
                 </label>
+
+                <div className="form-two">
+                  <label>
+                    Phone number
+                    <input
+                      type="tel"
+                      placeholder="+234 801 234 5678"
+                      value={phoneNumber}
+                      onChange={(event) => setPhoneNumber(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Role
+                    <select value={role} onChange={(event) => setRole(event.target.value)}>
+                      <option value="super_admin">Super Admin</option>
+                      <option value="president">President / Lead</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="form-two">
+                  <label>
+                    Password
+                    <input
+                      type="password"
+                      placeholder="Create password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Confirm password
+                    <input
+                      type="password"
+                      placeholder="Repeat password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      required
+                    />
+                  </label>
+                </div>
 
                 <label>
-                  Role
-                  <select value={role} onChange={(e) => setRole(e.target.value)}>
-                    <option value="exco">Exco officer</option>
-                    <option value="president">President</option>
-                    <option value="secretary">Secretary</option>
-                  </select>
+                  Workspace slug
+                  <span className="slug-field">
+                    <span>quorum.ng/</span>
+                    <input
+                      type="text"
+                      value={workspaceSlug}
+                      onChange={(event) => {
+                        setSlugEdited(true);
+                        setWorkspaceSlug(slugify(event.target.value));
+                      }}
+                      required
+                    />
+                  </span>
                 </label>
-
-                <label>
-                  Password (UI only for now)
-                  <input
-                    type="password"
-                    placeholder="Create password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </label>
-
-                <div className="signup-meta">Workspace slug: {workspaceSlug || "workspace"}</div>
               </>
-            )}
+            ) : null}
 
-            {error ? <p className="auth-error">{error}</p> : null}
+            {error ? <p className="form-error">{error}</p> : null}
 
-            <div className="signup-actions">
-              {step === 2 ? (
-                <button type="button" className="atelier-btn-ghost" onClick={() => setStep(1)}>
-                  Back
-                </button>
-              ) : (
-                <Link href="/" className="atelier-btn-ghost">
+            <div className="form-actions">
+              {step === 1 ? (
+                <Link href="/" className="btn-ghost">
                   Cancel setup
                 </Link>
+              ) : (
+                <button type="button" className="btn-ghost" onClick={() => setStep(1)}>
+                  Back
+                </button>
               )}
-
-              <button type="submit" className="auth-primary-btn" disabled={loading}>
-                {loading ? "Creating workspace..." : step === 1 ? "Continue to Admin" : "Create Workspace"}
+              <button type="submit" className="btn-primary" disabled={loading}>
+                {loading ? "Creating..." : step === 1 ? "Continue" : "Create workspace"}
               </button>
             </div>
           </form>
-
-          <p className="auth-hint">
-            Already have access? <Link href="/login">Sign in</Link>
-          </p>
         </section>
       </section>
     </main>

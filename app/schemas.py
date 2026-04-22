@@ -105,7 +105,7 @@ class LinkOut(LinkCreate):
 
 
 class AuthLoginRequest(BaseModel):
-    workspace_slug: str
+    workspace_slug: str | None = None
     email: str
     password: str | None = None
 
@@ -116,3 +116,35 @@ class AuthLoginResponse(BaseModel):
     member_id: int
     member_name: str
     member_role: str
+
+
+class AuthRegisterRequest(BaseModel):
+    organization_name: str = Field(min_length=2, max_length=120)
+    workspace_slug: str = Field(min_length=2, max_length=120)
+    university: str | None = None
+    body_type: str | None = None
+    faculty: str | None = None
+    admin_name: str = Field(min_length=2, max_length=120)
+    admin_email: str
+    phone_number: str | None = None
+    admin_role: str = "super_admin"
+    password: str | None = None
+
+
+class DashboardCounts(BaseModel):
+    members: int
+    dues_cycles: int
+    events: int
+    campaigns: int
+    links: int
+    paid_members: int
+    pending_members: int
+
+
+class WorkspaceOverview(BaseModel):
+    workspace: WorkspaceOut
+    counts: DashboardCounts
+    recent_events: list[EventOut]
+    active_campaigns: list[CampaignOut]
+    dues_cycles: list[DuesCycleOut]
+    links: list[LinkOut]
