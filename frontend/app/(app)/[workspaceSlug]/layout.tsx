@@ -14,6 +14,7 @@ const navItems = [
   { label: "Fundraising", icon: "payments", href: "campaigns" },
   { label: "Dues", icon: "receipt_long", href: "dues" },
   { label: "Links", icon: "link", href: "links" },
+  { label: "Settings", icon: "settings", href: "settings/roles" },
 ];
 
 export default function WorkspaceLayout({
@@ -50,7 +51,7 @@ export default function WorkspaceLayout({
     <div className="app-shell">
       <aside className="side-nav">
         <Link href={`${base}/dashboard`} className="brand-block">
-          <span className="brand-mark">Q</span>
+          <img className="brand-logo-img" src="/brand/quorum-icon-circle.svg" alt="" />
           <span>
             <strong>Quorum</strong>
             <small>Student Body Admin</small>
@@ -126,7 +127,7 @@ export default function WorkspaceLayout({
                     </span>
                     Profile
                   </Link>
-                  <Link href={`${base}/dashboard`}>
+                  <Link href={`${base}/settings/workspace`}>
                     <span className="material-symbols-outlined" aria-hidden="true">
                       settings
                     </span>

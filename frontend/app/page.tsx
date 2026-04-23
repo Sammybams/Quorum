@@ -25,7 +25,7 @@ export default function HomePage() {
       <nav className="stitch-nav">
         <div className="stitch-nav-inner">
           <Link href="/" className="stitch-logo">
-            Quorum
+            <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
           </Link>
           <div className="stitch-links">
             <a href="#features">Features</a>
@@ -143,7 +143,7 @@ export default function HomePage() {
 
       <footer className="stitch-footer">
         <div>
-          <strong>Quorum</strong>
+          <img className="footer-logo" src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
           <p>© 2026 Quorum Student Systems. Empowering student leadership.</p>
         </div>
         <div>

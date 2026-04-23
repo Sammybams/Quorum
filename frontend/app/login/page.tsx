@@ -43,7 +43,7 @@ export default function LoginPage() {
     <main className="auth-screen">
       <section className="auth-visual">
         <Link className="wordmark" href="/">
-          Quorum
+          <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
         </Link>
         <div className="auth-visual-copy">
           <p className="eyebrow">Student body operations</p>

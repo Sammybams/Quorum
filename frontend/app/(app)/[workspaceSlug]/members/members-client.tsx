@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { apiPost } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 
 type Workspace = { id: number; slug: string; name: string };
 type Member = {
@@ -14,6 +14,9 @@ type Member = {
   role: string;
   dues_status?: string;
 };
+type Role = { id: number; name: string; key: string; is_system_role: boolean };
+type Invitation = { id: number; email: string; role_name: string; token: string; status: string };
+type InviteLink = { id: number; token: string; role_name: string; is_active: boolean };
 
 export default function MembersClient({
   workspace,
@@ -23,21 +26,45 @@ export default function MembersClient({
   initialMembers: Member[];
 }) {
   const [members, setMembers] = useState(initialMembers);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>([]);
+  const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [level, setLevel] = useState("");
-  const [role, setRole] = useState("member");
+  const [roleId, setRoleId] = useState<number | null>(null);
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const inviteUrl = useMemo(() => {
-    if (typeof window === "undefined") {
-      return `/portal/${workspace.slug}`;
+  useEffect(() => {
+    async function loadInviteData() {
+      try {
+        const [loadedRoles, loadedInvitations, loadedInviteLinks] = await Promise.all([
+          apiGet<Role[]>(`/workspaces/${workspace.id}/roles`),
+          apiGet<Invitation[]>(`/workspaces/${workspace.id}/invitations`),
+          apiGet<InviteLink[]>(`/workspaces/${workspace.id}/invite-links`),
+        ]);
+        setRoles(loadedRoles);
+        setPendingInvitations(loadedInvitations);
+        setInviteLinks(loadedInviteLinks);
+        const coreRole = loadedRoles.find((item) => item.key === "core_member") || loadedRoles[0] || null;
+        setRoleId(coreRole?.id || null);
+      } catch {
+        // Role/invite loading requires a logged-in admin token; the page itself can still render read-only.
+      }
     }
-    return `${window.location.origin}/portal/${workspace.slug}`;
-  }, [workspace.slug]);
+
+    loadInviteData();
+  }, [workspace.id]);
+
+  const inviteUrl = useMemo(() => {
+    const token = inviteLinks.find((link) => link.is_active)?.token;
+    if (typeof window === "undefined") {
+      return token ? `/join/${token}` : `/portal/${workspace.slug}`;
+    }
+    return token ? `${window.location.origin}/join/${token}` : `${window.location.origin}/portal/${workspace.slug}`;
+  }, [inviteLinks, workspace.slug]);
 
   async function copyInviteLink() {
     await navigator.clipboard.writeText(inviteUrl);
@@ -45,30 +72,51 @@ export default function MembersClient({
     window.setTimeout(() => setCopied(false), 1800);
   }
 
+  async function createInviteLink() {
+    if (!roleId) {
+      setError("Select a role before creating an invite link.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const link = await apiPost<InviteLink, { role_id: number }>(`/workspaces/${workspace.id}/invite-links`, {
+        role_id: roleId,
+      });
+      setInviteLinks((current) => [link, ...current]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to create invite link.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!roleId) {
+      setError("Select a role before sending an invitation.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const member = await apiPost<
-        Member,
-        { full_name: string; email: string; role: string; level?: string }
-      >(`/workspaces/${workspace.id}/members`, {
-        full_name: fullName.trim(),
+      const invitation = await apiPost<Invitation, { email: string; role_id: number; note?: string }>(
+        `/workspaces/${workspace.id}/invitations`,
+        {
         email: email.trim().toLowerCase(),
-        role,
-        level: level.trim() || undefined,
-      });
+          role_id: roleId,
+          note: note.trim() || undefined,
+        },
+      );
 
-      setMembers((current) => [member, ...current]);
-      setFullName("");
+      setPendingInvitations((current) => [invitation, ...current]);
       setEmail("");
-      setLevel("");
-      setRole("member");
-      setInviteOpen(false);
+      setNote("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to invite member.");
+      setError(err instanceof Error ? err.message : "Unable to send invitation.");
     } finally {
       setLoading(false);
     }
@@ -104,7 +152,7 @@ export default function MembersClient({
               group
             </span>
             <h2>No members yet</h2>
-            <p>Add a member directly or copy the portal link for your workspace.</p>
+            <p>Send an email invitation or create a bulk invite link for your workspace.</p>
             <button type="button" className="btn-primary" onClick={() => setInviteOpen(true)}>
               Invite first member
             </button>
@@ -158,7 +206,7 @@ export default function MembersClient({
             <div className="card-head compact">
               <div>
                 <p className="eyebrow">Invite</p>
-                <h2 id="invite-title">Add a member</h2>
+                <h2 id="invite-title">Invite members</h2>
               </div>
               <button type="button" className="icon-button" aria-label="Close invite modal" onClick={() => setInviteOpen(false)}>
                 <span className="material-symbols-outlined" aria-hidden="true">
@@ -173,18 +221,11 @@ export default function MembersClient({
                 {copied ? "Copied" : "Copy link"}
               </button>
             </div>
+            <button type="button" className="btn-ghost" onClick={createInviteLink} disabled={loading}>
+              Generate bulk invite link
+            </button>
 
             <form className="form-stack" onSubmit={onSubmit}>
-              <label>
-                Full name
-                <input
-                  type="text"
-                  placeholder="Jane Doe"
-                  value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
-                  required
-                />
-              </label>
               <label>
                 Email
                 <input
@@ -195,35 +236,45 @@ export default function MembersClient({
                   required
                 />
               </label>
-              <div className="form-two">
-                <label>
-                  Level
-                  <input
-                    type="text"
-                    placeholder="300L"
-                    value={level}
-                    onChange={(event) => setLevel(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Role
-                  <select value={role} onChange={(event) => setRole(event.target.value)}>
-                    <option value="member">Member</option>
-                    <option value="exco">Exco officer</option>
-                    <option value="secretary">Secretary</option>
-                    <option value="treasurer">Treasurer</option>
-                  </select>
-                </label>
-              </div>
+              <label>
+                Role
+                <select value={roleId || ""} onChange={(event) => setRoleId(Number(event.target.value))}>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Personal note
+                <textarea
+                  rows={3}
+                  placeholder="Optional message shown in the invitation email"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                />
+              </label>
 
               {error ? <p className="form-error">{error}</p> : null}
+
+              {pendingInvitations.length > 0 ? (
+                <div className="mini-list">
+                  {pendingInvitations.slice(0, 4).map((invitation) => (
+                    <div key={invitation.id}>
+                      <span>{invitation.email}</span>
+                      <strong>{invitation.role_name} · {invitation.status}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               <div className="form-actions">
                 <button type="button" className="btn-ghost" onClick={() => setInviteOpen(false)}>
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary" disabled={loading}>
-                  {loading ? "Adding..." : "Add member"}
+                  {loading ? "Sending..." : "Send invitation"}
                 </button>
               </div>
             </form>

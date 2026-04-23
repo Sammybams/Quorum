@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from ..membership import sync_workspace_members_from_legacy
+from ..rbac import require_workspace_permission
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -39,11 +41,21 @@ def get_workspace_overview(slug: str, db: Session = Depends(get_db)):
     workspace = db.query(models.Workspace).filter(models.Workspace.slug == slug).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
+    sync_workspace_members_from_legacy(db, workspace)
 
-    member_count = db.query(func.count(models.Member.id)).filter(models.Member.workspace_id == workspace.id).scalar() or 0
+    member_count = (
+        db.query(func.count(models.WorkspaceMember.id))
+        .filter(models.WorkspaceMember.workspace_id == workspace.id, models.WorkspaceMember.status == "active")
+        .scalar()
+        or 0
+    )
     paid_members = (
-        db.query(func.count(models.Member.id))
-        .filter(models.Member.workspace_id == workspace.id, func.lower(models.Member.dues_status) == "paid")
+        db.query(func.count(models.WorkspaceMember.id))
+        .filter(
+            models.WorkspaceMember.workspace_id == workspace.id,
+            models.WorkspaceMember.status == "active",
+            func.lower(models.WorkspaceMember.dues_status) == "paid",
+        )
         .scalar()
         or 0
     )
@@ -108,4 +120,30 @@ def get_workspace(workspace_id: int, db: Session = Depends(get_db)):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
+    return workspace
+
+
+@router.patch("/{workspace_id}", response_model=schemas.WorkspaceOut)
+def update_workspace(
+    workspace_id: int,
+    payload: schemas.WorkspaceUpdate,
+    db: Session = Depends(get_db),
+    _membership: models.WorkspaceMember = Depends(require_workspace_permission("settings.edit")),
+):
+    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    if payload.slug and payload.slug != workspace.slug:
+        existing = db.query(models.Workspace).filter(models.Workspace.slug == payload.slug).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="Workspace slug already exists")
+        workspace.slug = payload.slug.strip().lower()
+    if payload.name is not None:
+        workspace.name = payload.name.strip()
+    if payload.description is not None:
+        workspace.description = payload.description
+
+    db.commit()
+    db.refresh(workspace)
     return workspace

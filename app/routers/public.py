@@ -1,8 +1,11 @@
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import models
+from .. import models, schemas
 from ..database import get_db
+from .campaigns import _contribution_out, _stream_out
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -29,13 +32,70 @@ def get_public_campaign(campaign_slug: str, db: Session = Depends(get_db)):
     campaign = db.query(models.Campaign).filter(models.Campaign.slug == campaign_slug).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    confirmed_contributors = {
+        contribution.contributor_email or contribution.contributor_name or str(contribution.id)
+        for contribution in campaign.contributions
+        if contribution.status == "confirmed"
+    }
     return {
         "name": campaign.name,
         "slug": campaign.slug,
         "target_amount": campaign.target_amount,
         "raised_amount": campaign.raised_amount,
         "status": campaign.status,
+        "workspace": {"name": campaign.workspace.name, "slug": campaign.workspace.slug},
+        "funding_streams": [_stream_out(stream).model_dump() for stream in campaign.funding_streams],
+        "contributor_count": len(confirmed_contributors),
     }
+
+
+@router.post("/donate/{campaign_slug}/submissions", response_model=schemas.PublicContributionResponse)
+def submit_public_contribution(
+    campaign_slug: str,
+    payload: schemas.PublicContributionCreate,
+    db: Session = Depends(get_db),
+):
+    campaign = db.query(models.Campaign).filter(models.Campaign.slug == campaign_slug).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if campaign.status != "active":
+        raise HTTPException(status_code=400, detail="Campaign is not accepting contributions")
+
+    if payload.stream_id:
+        stream = (
+            db.query(models.FundingStream)
+            .filter(
+                models.FundingStream.id == payload.stream_id,
+                models.FundingStream.campaign_id == campaign.id,
+                models.FundingStream.workspace_id == campaign.workspace_id,
+            )
+            .first()
+        )
+        if not stream:
+            raise HTTPException(status_code=404, detail="Funding stream not found")
+
+    reference = f"QRM-CAMP-{uuid4().hex[:14].upper()}"
+    contribution = models.Contribution(
+        workspace_id=campaign.workspace_id,
+        campaign_id=campaign.id,
+        stream_id=payload.stream_id,
+        contributor_name=payload.contributor_name,
+        contributor_email=payload.contributor_email,
+        amount=payload.amount,
+        method="public",
+        gateway_ref=reference,
+        is_anonymous=payload.is_anonymous,
+        status="pending",
+    )
+    db.add(contribution)
+    db.commit()
+    db.refresh(contribution)
+
+    return schemas.PublicContributionResponse(
+        contribution=_contribution_out(contribution),
+        payment_reference=reference,
+        checkout_url=None,
+    )
 
 
 @router.get("/portal/{workspace_slug}")

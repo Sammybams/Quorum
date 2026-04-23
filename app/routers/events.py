@@ -3,12 +3,18 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from ..rbac import require_workspace_permission
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/events", tags=["events"])
 
 
 @router.post("", response_model=schemas.EventOut)
-def create_event(workspace_id: int, payload: schemas.EventCreate, db: Session = Depends(get_db)):
+def create_event(
+    workspace_id: int,
+    payload: schemas.EventCreate,
+    db: Session = Depends(get_db),
+    _membership: models.WorkspaceMember = Depends(require_workspace_permission("events.manage")),
+):
     workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")

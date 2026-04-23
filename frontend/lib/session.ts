@@ -4,6 +4,10 @@ export type QuorumSession = {
   member_id: number;
   member_name: string;
   member_role: string;
+  user_id?: number;
+  role_key?: string;
+  access_token?: string;
+  token_type?: string;
 };
 
 const SESSION_KEY = "quorum_session";
@@ -40,4 +44,8 @@ export function clearSession() {
   }
 
   window.localStorage.removeItem(SESSION_KEY);
+}
+
+export function readAccessToken(): string | null {
+  return readSession()?.access_token || null;
 }

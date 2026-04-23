@@ -105,7 +105,7 @@ export default function RegisterPage() {
       <main className="signup-screen">
         <header className="signup-top">
           <Link className="wordmark" href="/">
-            Quorum
+            <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
           </Link>
           <Link href="/login" className="subtle-link">
             Sign in
@@ -152,7 +152,7 @@ export default function RegisterPage() {
     <main className="signup-screen">
       <header className="signup-top">
         <Link className="wordmark" href="/">
-          Quorum
+          <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
         </Link>
         <Link href="/login" className="subtle-link">
           Sign in
