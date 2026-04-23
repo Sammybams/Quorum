@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
-from .. import models, schemas
-from ..database import get_db
+from .. import schemas
+from ..database import DESC, MongoStore, get_db
 from ..rbac import require_workspace_permission
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/links", tags=["links"])
@@ -12,29 +11,17 @@ router = APIRouter(prefix="/workspaces/{workspace_id}/links", tags=["links"])
 def create_link(
     workspace_id: int,
     payload: schemas.LinkCreate,
-    db: Session = Depends(get_db),
-    _membership: models.WorkspaceMember = Depends(require_workspace_permission("settings.edit")),
+    db: MongoStore = Depends(get_db),
+    _membership=Depends(require_workspace_permission("settings.edit")),
 ):
-    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
-    if not workspace:
+    if not db.find_by_id("workspaces", workspace_id):
         raise HTTPException(status_code=404, detail="Workspace not found")
-
-    existing_slug = db.query(models.ShortLink).filter(models.ShortLink.slug == payload.slug).first()
-    if existing_slug:
+    if db.find_one("short_links", {"slug": payload.slug}):
         raise HTTPException(status_code=409, detail="Short link slug already exists")
 
-    short_link = models.ShortLink(workspace_id=workspace_id, **payload.model_dump())
-    db.add(short_link)
-    db.commit()
-    db.refresh(short_link)
-    return short_link
+    return db.insert("short_links", {"workspace_id": workspace_id, "click_count": 0, "is_active": True, **payload.model_dump()})
 
 
 @router.get("", response_model=list[schemas.LinkOut])
-def list_links(workspace_id: int, db: Session = Depends(get_db)):
-    return (
-        db.query(models.ShortLink)
-        .filter(models.ShortLink.workspace_id == workspace_id)
-        .order_by(models.ShortLink.created_at.desc())
-        .all()
-    )
+def list_links(workspace_id: int, db: MongoStore = Depends(get_db)):
+    return db.find_many("short_links", {"workspace_id": workspace_id}, sort=[("created_at", DESC)])

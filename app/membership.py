@@ -1,50 +1,45 @@
-from sqlalchemy.orm import Session
+from datetime import datetime
 
 from . import models
+from .database import MongoStore
 from .rbac import ensure_default_roles
 
 
-def sync_workspace_members_from_legacy(db: Session, workspace: models.Workspace) -> None:
+def sync_workspace_members_from_legacy(db: MongoStore, workspace: models.Workspace) -> None:
     roles = ensure_default_roles(db, workspace.id)
-    changed = False
-    legacy_members = db.query(models.Member).filter(models.Member.workspace_id == workspace.id).all()
+    legacy_members = db.find_many("members", {"workspace_id": workspace.id})
 
     for legacy_member in legacy_members:
         email = legacy_member.email.strip().lower()
-        user = db.query(models.User).filter(models.User.email == email).first()
+        user = db.find_one("users", {"email": email})
         if user is None:
-            user = models.User(
-                full_name=legacy_member.full_name,
-                email=email,
-                phone=None,
-                password_hash=None,
-                email_verified=False,
+            user = db.insert(
+                "users",
+                {
+                    "full_name": legacy_member.full_name,
+                    "email": email,
+                    "phone": None,
+                    "password_hash": None,
+                    "email_verified": False,
+                },
             )
-            db.add(user)
-            db.flush()
-            changed = True
 
-        membership = (
-            db.query(models.WorkspaceMember)
-            .filter(models.WorkspaceMember.workspace_id == workspace.id, models.WorkspaceMember.user_id == user.id)
-            .first()
-        )
+        membership = db.find_one("workspace_members", {"workspace_id": workspace.id, "user_id": user.id})
         if membership is None:
             role_key = role_key_from_input(legacy_member.role)
-            membership = models.WorkspaceMember(
-                workspace_id=workspace.id,
-                user_id=user.id,
-                role_id=roles[role_key].id,
-                level=legacy_member.level,
-                dues_status=legacy_member.dues_status,
-                is_general_member=role_key == "core_member",
-                status="active",
+            db.insert(
+                "workspace_members",
+                {
+                    "workspace_id": workspace.id,
+                    "user_id": user.id,
+                    "role_id": roles[role_key].id,
+                    "level": legacy_member.get("level"),
+                    "dues_status": legacy_member.get("dues_status", "defaulter"),
+                    "is_general_member": role_key == "core_member",
+                    "status": "active",
+                    "joined_at": legacy_member.get("created_at") or datetime.utcnow(),
+                },
             )
-            db.add(membership)
-            changed = True
-
-    if changed:
-        db.commit()
 
 
 def role_key_from_input(role: str | None) -> str:

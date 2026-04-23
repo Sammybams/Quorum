@@ -1,8 +1,7 @@
 from fastapi import Depends, Header, HTTPException
-from sqlalchemy.orm import Session
 
 from . import models
-from .database import get_db
+from .database import MongoStore, get_db
 from .security import decode_access_token
 
 
@@ -68,7 +67,6 @@ CORE_MEMBER_PERMISSIONS = [
     "announcements.view",
 ]
 
-
 DEFAULT_ROLE_DEFINITIONS = [
     ("owner", "Workspace Owner", "System owner role with full access.", OWNER_PERMISSIONS, True),
     ("secretary", "Secretary", "System secretary role for meetings, minutes, and announcements.", SECRETARY_PERMISSIONS, True),
@@ -76,32 +74,46 @@ DEFAULT_ROLE_DEFINITIONS = [
 ]
 
 
-def ensure_default_roles(db: Session, workspace_id: int) -> dict[str, models.Role]:
+def ensure_default_roles(db: MongoStore, workspace_id: int) -> dict[str, models.Role]:
     roles: dict[str, models.Role] = {}
     for key, name, description, permissions, is_system_role in DEFAULT_ROLE_DEFINITIONS:
-        role = (
-            db.query(models.Role)
-            .filter(models.Role.workspace_id == workspace_id, models.Role.key == key)
-            .first()
-        )
+        role = db.find_one("roles", {"workspace_id": workspace_id, "key": key})
         if role is None:
-            role = models.Role(
-                workspace_id=workspace_id,
-                key=key,
-                name=name,
-                description=description,
-                is_system_role=is_system_role,
+            role = db.insert(
+                "roles",
+                {
+                    "workspace_id": workspace_id,
+                    "key": key,
+                    "name": name,
+                    "description": description,
+                    "is_system_role": is_system_role,
+                    "permissions": sorted(set(permissions)),
+                },
             )
-            role.set_permissions(permissions)
-            db.add(role)
-            db.flush()
         roles[key] = role
     return roles
 
 
+def hydrate_user(db: MongoStore, user: models.User) -> models.User:
+    memberships = db.find_many("workspace_members", {"user_id": user.id, "status": "active"})
+    for membership in memberships:
+        membership.user = user
+        membership.workspace = db.find_by_id("workspaces", membership.workspace_id)
+        membership.role = db.find_by_id("roles", membership.role_id)
+    user.workspace_memberships = memberships
+    return user
+
+
+def hydrate_membership(db: MongoStore, membership: models.WorkspaceMember) -> models.WorkspaceMember:
+    membership.user = db.find_by_id("users", membership.user_id)
+    membership.workspace = db.find_by_id("workspaces", membership.workspace_id)
+    membership.role = db.find_by_id("roles", membership.role_id)
+    return membership
+
+
 def get_current_user(
     authorization: str | None = Header(default=None),
-    db: Session = Depends(get_db),
+    db: MongoStore = Depends(get_db),
 ) -> models.User:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing access token")
@@ -110,29 +122,23 @@ def get_current_user(
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired access token")
 
-    user = db.query(models.User).filter(models.User.id == int(payload["sub"])).first()
+    user = db.find_by_id("users", int(payload["sub"]))
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    return user
+    return hydrate_user(db, user)
 
 
 def require_workspace_permission(permission: str):
     def dependency(
         workspace_id: int,
         user: models.User = Depends(get_current_user),
-        db: Session = Depends(get_db),
+        db: MongoStore = Depends(get_db),
     ) -> models.WorkspaceMember:
-        membership = (
-            db.query(models.WorkspaceMember)
-            .join(models.Role, models.WorkspaceMember.role_id == models.Role.id)
-            .filter(
-                models.WorkspaceMember.workspace_id == workspace_id,
-                models.WorkspaceMember.user_id == user.id,
-                models.WorkspaceMember.status == "active",
-            )
-            .first()
-        )
-        if not membership or not membership.role or permission not in membership.role.permissions:
+        membership = db.find_one("workspace_members", {"workspace_id": workspace_id, "user_id": user.id, "status": "active"})
+        if not membership:
+            raise HTTPException(status_code=403, detail="Insufficient permission")
+        hydrate_membership(db, membership)
+        if not membership.role or permission not in membership.role.permissions:
             raise HTTPException(status_code=403, detail="Insufficient permission")
         return membership
 

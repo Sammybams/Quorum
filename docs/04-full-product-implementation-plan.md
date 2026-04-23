@@ -35,7 +35,7 @@ Major gaps:
 7. Meetings, minutes, Claude processing, action items, tasks.
 8. Announcements, notification feed, email dispatch.
 9. Settings, integrations, billing, portal customization.
-10. Production migrations instead of `Base.metadata.create_all`.
+10. Production MongoDB backup, index, and migration workflows.
 
 ## 3. Foundation Architecture
 

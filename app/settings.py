@@ -1,12 +1,8 @@
 import os
 
-DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").lower()
-MONGODB_URL = os.getenv("MONGODB_URL", "")
+MONGODB_CONNECTION_STRING = os.getenv("MONGODB_CONNECTION_STRING") or os.getenv("MONGODB_URL", "")
+MONGODB_DATABASE_PREFIX = os.getenv("MONGODB_DATABASE_PREFIX") or os.getenv("MONGODB_DATABASE", "")
 
 
-def is_sqlite_mode() -> bool:
-    return DB_ENGINE == "sqlite"
-
-
-def is_mongodb_mode() -> bool:
-    return DB_ENGINE == "mongodb"
+def has_mongodb_config() -> bool:
+    return bool(MONGODB_CONNECTION_STRING)

@@ -29,10 +29,23 @@ uvicorn app.main:app --reload --port 8000
 4. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 5. Set environment variables from `.env.example`
 
-Default database is SQLite via:
+The backend uses MongoDB. Set this in your local `.env` and in Render:
 
 ```text
-DATABASE_URL=sqlite:///./quorum.db
+MONGODB_CONNECTION_STRING=mongodb://localhost:27017
+MONGODB_DATABASE_PREFIX=
+```
+
+To migrate an existing local SQLite database into MongoDB, run:
+
+```bash
+python scripts/migrate_sqlite_to_mongodb.py --sqlite quorum.db --replace
+```
+
+To move data from the original single MongoDB database into the segmented MongoDB layout, run:
+
+```bash
+python scripts/migrate_mongodb_to_segmented.py --source-db quorum --replace
 ```
 
 ## Frontend (Vercel)
@@ -58,16 +71,15 @@ Example:
 NEXT_PUBLIC_API_BASE_URL=https://your-api.onrender.com/api/v1
 ```
 
-## Database Choice: SQLite now, MongoDB later
+## Database
 
-Current implementation uses SQLAlchemy with SQLite for fast iteration.
+MongoDB is now the application database. The API keeps integer `id` fields for compatibility with the existing frontend while storing data in segmented databases:
 
-MongoDB path (planned):
-
-1. Add a persistence abstraction in backend services/repositories.
-2. Introduce Mongo models and repository implementations.
-3. Keep API contracts stable so frontend does not change.
-4. Switch based on env flag (e.g., `DB_ENGINE=sqlite|mongodb`).
+- `communities`: `workspaces`, `members`
+- `identity`: `users`, `roles`, `workspace_members`, `invitations`, `invite_links`
+- `finance`: `dues_cycles`, `dues_payments`, `campaigns`, `funding_streams`, `contributions`
+- `engagement`: `events`, `announcements`, `short_links`
+- `platform`: `counters`
 
 ## Current Working Endpoints (MVP scaffold)
 

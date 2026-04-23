@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .database import Base, engine
+from .database import store
 from .routers import (
     announcements,
     auth,
@@ -35,7 +35,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    Base.metadata.create_all(bind=engine)
+    store.ensure_indexes()
 
 
 api_prefix = os.getenv("API_PREFIX", "/api/v1")

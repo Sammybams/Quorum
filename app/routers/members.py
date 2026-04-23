@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..database import get_db
+from ..database import DESC, MongoStore, get_db
 from ..membership import role_key_from_input, sync_workspace_members_from_legacy
 from ..rbac import ensure_default_roles, require_workspace_permission
 
@@ -13,10 +12,10 @@ router = APIRouter(prefix="/workspaces/{workspace_id}/members", tags=["members"]
 def create_member(
     workspace_id: int,
     payload: schemas.MemberCreate,
-    db: Session = Depends(get_db),
-    _membership: models.WorkspaceMember = Depends(require_workspace_permission("members.invite")),
+    db: MongoStore = Depends(get_db),
+    _membership=Depends(require_workspace_permission("members.invite")),
 ):
-    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
+    workspace = db.find_by_id("workspaces", workspace_id)
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
@@ -25,80 +24,69 @@ def create_member(
     role = roles.get(role_key) or roles["core_member"]
     email = payload.email.strip().lower()
 
-    user = db.query(models.User).filter(models.User.email == email).first()
+    user = db.find_one("users", {"email": email})
     if user is None:
-        user = models.User(
-            full_name=payload.full_name.strip(),
-            email=email,
-            phone=None,
-            password_hash=None,
-            email_verified=False,
+        user = db.insert(
+            "users",
+            {"full_name": payload.full_name.strip(), "email": email, "phone": None, "password_hash": None, "email_verified": False},
         )
-        db.add(user)
-        db.flush()
 
-    existing_membership = (
-        db.query(models.WorkspaceMember)
-        .filter(models.WorkspaceMember.workspace_id == workspace_id, models.WorkspaceMember.user_id == user.id)
-        .first()
-    )
-    if existing_membership:
+    if db.find_one("workspace_members", {"workspace_id": workspace_id, "user_id": user.id}):
         raise HTTPException(status_code=409, detail="Member already belongs to this workspace")
 
-    membership = models.WorkspaceMember(
-        workspace_id=workspace_id,
-        user_id=user.id,
-        role_id=role.id,
-        level=payload.level,
-        dues_status="defaulter",
-        is_general_member=role.key == "core_member",
-        status="active",
+    membership = db.insert(
+        "workspace_members",
+        {
+            "workspace_id": workspace_id,
+            "user_id": user.id,
+            "role_id": role.id,
+            "level": payload.level,
+            "dues_status": "defaulter",
+            "is_general_member": role.key == "core_member",
+            "status": "active",
+            "joined_at": user.created_at,
+        },
     )
-    db.add(membership)
 
-    legacy_member = models.Member(
-        workspace_id=workspace_id,
-        full_name=user.full_name,
-        email=user.email,
-        role=role.name,
-        level=payload.level,
-        dues_status="defaulter",
+    db.insert(
+        "members",
+        {
+            "workspace_id": workspace_id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "role": role.name,
+            "level": payload.level,
+            "dues_status": "defaulter",
+        },
     )
-    db.add(legacy_member)
-    db.commit()
-    db.refresh(membership)
-    return _member_out(membership)
+    return _member_out(db, membership)
 
 
 @router.get("", response_model=list[schemas.WorkspaceMemberOut])
-def list_members(workspace_id: int, db: Session = Depends(get_db)):
-    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
+def list_members(workspace_id: int, db: MongoStore = Depends(get_db)):
+    workspace = db.find_by_id("workspaces", workspace_id)
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
-
     sync_workspace_members_from_legacy(db, workspace)
-    memberships = (
-        db.query(models.WorkspaceMember)
-        .filter(models.WorkspaceMember.workspace_id == workspace_id)
-        .order_by(models.WorkspaceMember.joined_at.desc())
-        .all()
-    )
-    return [_member_out(membership) for membership in memberships]
+    memberships = db.find_many("workspace_members", {"workspace_id": workspace_id}, sort=[("joined_at", DESC), ("created_at", DESC)])
+    return [_member_out(db, membership) for membership in memberships]
 
 
-def _member_out(membership: models.WorkspaceMember) -> schemas.WorkspaceMemberOut:
+def _member_out(db: MongoStore, membership: models.WorkspaceMember) -> schemas.WorkspaceMemberOut:
+    user = db.find_by_id("users", membership.user_id)
+    role = db.find_by_id("roles", membership.role_id)
     return schemas.WorkspaceMemberOut(
         id=membership.id,
         workspace_id=membership.workspace_id,
         user_id=membership.user_id,
         role_id=membership.role_id,
-        full_name=membership.user.full_name,
-        email=membership.user.email,
-        role=membership.role.name,
-        role_key=membership.role.key,
-        level=membership.level,
-        dues_status=membership.dues_status,
-        status=membership.status,
-        is_general_member=membership.is_general_member,
-        created_at=membership.joined_at,
+        full_name=user.full_name,
+        email=user.email,
+        role=role.name,
+        role_key=role.key,
+        level=membership.get("level"),
+        dues_status=membership.get("dues_status", "defaulter"),
+        status=membership.get("status", "active"),
+        is_general_member=membership.get("is_general_member", False),
+        created_at=membership.get("joined_at") or membership.created_at,
     )

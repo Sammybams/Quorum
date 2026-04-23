@@ -1,19 +1,18 @@
 import re
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..database import get_db
+from ..database import ASC, MongoStore, get_db
 from ..rbac import ensure_default_roles, require_workspace_permission
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/roles", tags=["roles"])
 
 
 @router.get("", response_model=list[schemas.RoleOut])
-def list_roles(workspace_id: int, db: Session = Depends(get_db)):
+def list_roles(workspace_id: int, db: MongoStore = Depends(get_db)):
     ensure_default_roles(db, workspace_id)
-    roles = db.query(models.Role).filter(models.Role.workspace_id == workspace_id).order_by(models.Role.created_at.asc()).all()
+    roles = db.find_many("roles", {"workspace_id": workspace_id}, sort=[("created_at", ASC)])
     return [_role_out(role) for role in roles]
 
 
@@ -21,29 +20,27 @@ def list_roles(workspace_id: int, db: Session = Depends(get_db)):
 def create_role(
     workspace_id: int,
     payload: schemas.RoleCreate,
-    db: Session = Depends(get_db),
-    _membership: models.WorkspaceMember = Depends(require_workspace_permission("roles.manage")),
+    db: MongoStore = Depends(get_db),
+    _membership=Depends(require_workspace_permission("roles.manage")),
 ):
-    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
-    if not workspace:
+    if not db.find_by_id("workspaces", workspace_id):
         raise HTTPException(status_code=404, detail="Workspace not found")
 
     key = _slugify(payload.name)
-    existing = db.query(models.Role).filter(models.Role.workspace_id == workspace_id, models.Role.key == key).first()
-    if existing:
+    if db.find_one("roles", {"workspace_id": workspace_id, "key": key}):
         raise HTTPException(status_code=409, detail="Role already exists")
 
-    role = models.Role(
-        workspace_id=workspace_id,
-        key=key,
-        name=payload.name.strip(),
-        description=payload.description,
-        is_system_role=False,
+    role = db.insert(
+        "roles",
+        {
+            "workspace_id": workspace_id,
+            "key": key,
+            "name": payload.name.strip(),
+            "description": payload.description,
+            "is_system_role": False,
+            "permissions": sorted(set(payload.permissions)),
+        },
     )
-    role.set_permissions(payload.permissions)
-    db.add(role)
-    db.commit()
-    db.refresh(role)
     return _role_out(role)
 
 
@@ -52,25 +49,23 @@ def update_role(
     workspace_id: int,
     role_id: int,
     payload: schemas.RoleUpdate,
-    db: Session = Depends(get_db),
-    _membership: models.WorkspaceMember = Depends(require_workspace_permission("roles.manage")),
+    db: MongoStore = Depends(get_db),
+    _membership=Depends(require_workspace_permission("roles.manage")),
 ):
-    role = db.query(models.Role).filter(models.Role.workspace_id == workspace_id, models.Role.id == role_id).first()
+    role = db.find_one("roles", {"workspace_id": workspace_id, "id": role_id})
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
 
     if payload.name is not None:
-        role.name = payload.name.strip()
-        if not role.is_system_role:
-            role.key = _slugify(payload.name)
+        role["name"] = payload.name.strip()
+        if not role.get("is_system_role"):
+            role["key"] = _slugify(payload.name)
     if payload.description is not None:
-        role.description = payload.description
+        role["description"] = payload.description
     if payload.permissions is not None:
-        role.set_permissions(payload.permissions)
+        role["permissions"] = sorted(set(payload.permissions))
 
-    db.commit()
-    db.refresh(role)
-    return _role_out(role)
+    return _role_out(db.save("roles", role))
 
 
 def _role_out(role: models.Role) -> schemas.RoleOut:
@@ -79,8 +74,8 @@ def _role_out(role: models.Role) -> schemas.RoleOut:
         workspace_id=role.workspace_id,
         key=role.key,
         name=role.name,
-        description=role.description,
-        is_system_role=role.is_system_role,
+        description=role.get("description"),
+        is_system_role=role.get("is_system_role", False),
         permissions=role.permissions,
         created_at=role.created_at,
     )

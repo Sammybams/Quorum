@@ -85,7 +85,7 @@ Use one `.env` per app + shared examples:
 
 Key variables:
 
-1. `DATABASE_URL`
+1. `MONGODB_CONNECTION_STRING`
 2. `REDIS_URL`
 3. `JWT_SECRET`
 4. `OBJECT_STORAGE_BUCKET`
