@@ -63,6 +63,9 @@ export function DonationForm({
       });
       setResult(response);
       setAmount("");
+      if (response.checkout_url) {
+        window.location.assign(response.checkout_url);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to record contribution.");
     } finally {
@@ -137,14 +140,14 @@ export function DonationForm({
             check_circle
           </span>
           <div>
-            <strong>Contribution recorded</strong>
+            <strong>{result.checkout_url ? "Redirecting to Paystack" : "Contribution recorded"}</strong>
             <p>Reference: {result.payment_reference}</p>
           </div>
         </div>
       ) : null}
 
       <button className="btn-primary wide" disabled={loading} type="submit">
-        {loading ? "Recording..." : "Record contribution"}
+        {loading ? "Preparing..." : "Continue to payment"}
       </button>
     </form>
   );

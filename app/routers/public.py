@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from ..payments import PaymentInitializationError, initialize_paystack_transaction, payment_callback_url
 from .campaigns import _contribution_out, _stream_out
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -75,6 +76,25 @@ def submit_public_contribution(
             raise HTTPException(status_code=404, detail="Funding stream not found")
 
     reference = f"QRM-CAMP-{uuid4().hex[:14].upper()}"
+    checkout = None
+    if payload.contributor_email:
+        try:
+            checkout = initialize_paystack_transaction(
+                email=payload.contributor_email,
+                amount=payload.amount,
+                reference=reference,
+                callback_url=payment_callback_url(f"/donate/{campaign.slug}"),
+                metadata={
+                    "type": "campaign_contribution",
+                    "campaign_id": campaign.id,
+                    "campaign_slug": campaign.slug,
+                    "workspace_id": campaign.workspace_id,
+                    "stream_id": payload.stream_id,
+                },
+            )
+        except PaymentInitializationError as exc:
+            raise HTTPException(status_code=502, detail=f"Unable to initialize payment: {exc}") from exc
+
     contribution = models.Contribution(
         workspace_id=campaign.workspace_id,
         campaign_id=campaign.id,
@@ -82,7 +102,7 @@ def submit_public_contribution(
         contributor_name=payload.contributor_name,
         contributor_email=payload.contributor_email,
         amount=payload.amount,
-        method="public",
+        method="paystack" if checkout else "public",
         gateway_ref=reference,
         is_anonymous=payload.is_anonymous,
         status="pending",
@@ -94,7 +114,8 @@ def submit_public_contribution(
     return schemas.PublicContributionResponse(
         contribution=_contribution_out(contribution),
         payment_reference=reference,
-        checkout_url=None,
+        checkout_url=checkout.authorization_url if checkout else None,
+        access_code=checkout.access_code if checkout else None,
     )
 
 

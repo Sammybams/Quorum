@@ -119,6 +119,12 @@ class DuesPaymentCreate(BaseModel):
     receipt_url: str | None = None
 
 
+class DuesPaymentCheckoutCreate(BaseModel):
+    member_id: int | None = None
+    email: str | None = None
+    amount: float | None = Field(default=None, gt=0)
+
+
 class DuesPaymentOut(BaseModel):
     id: int
     workspace_id: int
@@ -133,6 +139,14 @@ class DuesPaymentOut(BaseModel):
     confirmed_by_user_id: int | None = None
     confirmed_at: datetime | None = None
     created_at: datetime
+
+
+class DuesPaymentCheckoutResponse(BaseModel):
+    payment: DuesPaymentOut
+    payment_reference: str
+    checkout_url: str | None = None
+    access_code: str | None = None
+    provider: str = "paystack"
 
 
 class EventCreate(BaseModel):
@@ -233,6 +247,8 @@ class PublicContributionResponse(BaseModel):
     contribution: ContributionOut
     payment_reference: str
     checkout_url: str | None = None
+    access_code: str | None = None
+    provider: str = "paystack"
 
 
 class LinkCreate(BaseModel):

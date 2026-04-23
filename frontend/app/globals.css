@@ -1119,6 +1119,26 @@ p {
   white-space: nowrap;
 }
 
+.payment-link-box {
+  background: var(--surface-low);
+  border-radius: 22px;
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px;
+}
+
+.payment-link-box span {
+  color: var(--text);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.payment-link-box p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
 .role-list {
   display: grid;
   gap: 14px;

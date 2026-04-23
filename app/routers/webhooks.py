@@ -1,6 +1,10 @@
+import hashlib
+import hmac
+import json
+import os
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -10,8 +14,19 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 
 @router.post("/paystack")
-async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
-    payload = await request.json()
+async def paystack_webhook(
+    request: Request,
+    x_paystack_signature: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    raw_body = await request.body()
+    secret_key = os.getenv("PAYSTACK_SECRET_KEY")
+    if secret_key:
+        expected = hmac.new(secret_key.encode("utf-8"), raw_body, hashlib.sha512).hexdigest()
+        if not x_paystack_signature or not hmac.compare_digest(expected, x_paystack_signature):
+            raise HTTPException(status_code=401, detail="Invalid Paystack signature")
+
+    payload = json.loads(raw_body.decode("utf-8"))
     event = payload.get("event")
     data = payload.get("data") or {}
     reference = data.get("reference")

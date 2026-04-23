@@ -1,10 +1,12 @@
 from datetime import datetime
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from ..payments import PaymentInitializationError, initialize_paystack_transaction, payment_callback_url
 from ..rbac import require_workspace_permission
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/dues-cycles", tags=["dues"])
@@ -82,6 +84,77 @@ def create_manual_payment(
     db.commit()
     db.refresh(payment)
     return _payment_out(payment)
+
+
+@router.post("/{cycle_id}/payments/checkout", response_model=schemas.DuesPaymentCheckoutResponse, status_code=201)
+def initialize_dues_checkout(
+    workspace_id: int,
+    cycle_id: int,
+    payload: schemas.DuesPaymentCheckoutCreate,
+    db: Session = Depends(get_db),
+    _membership: models.WorkspaceMember = Depends(require_workspace_permission("dues.manage")),
+):
+    cycle = (
+        db.query(models.DuesCycle)
+        .filter(models.DuesCycle.workspace_id == workspace_id, models.DuesCycle.id == cycle_id)
+        .first()
+    )
+    if not cycle:
+        raise HTTPException(status_code=404, detail="Dues cycle not found")
+
+    member = None
+    if payload.member_id:
+        member = (
+            db.query(models.WorkspaceMember)
+            .filter(
+                models.WorkspaceMember.workspace_id == workspace_id,
+                models.WorkspaceMember.id == payload.member_id,
+            )
+            .first()
+        )
+        if not member:
+            raise HTTPException(status_code=404, detail="Member not found")
+
+    email = payload.email or (member.user.email if member and member.user else None)
+    amount = payload.amount or cycle.amount
+    reference = f"QRM-DUES-{uuid4().hex[:14].upper()}"
+    checkout = None
+    if email:
+        try:
+            checkout = initialize_paystack_transaction(
+                email=email,
+                amount=amount,
+                reference=reference,
+                callback_url=payment_callback_url(f"/workspaces/{workspace_id}/dues"),
+                metadata={
+                    "type": "dues_payment",
+                    "workspace_id": workspace_id,
+                    "cycle_id": cycle_id,
+                    "member_id": payload.member_id,
+                },
+            )
+        except PaymentInitializationError as exc:
+            raise HTTPException(status_code=502, detail=f"Unable to initialize payment: {exc}") from exc
+
+    payment = models.DuesPayment(
+        workspace_id=workspace_id,
+        cycle_id=cycle_id,
+        member_id=payload.member_id,
+        amount=amount,
+        method="paystack" if checkout else "manual",
+        gateway_ref=reference,
+        status="initiated" if checkout else "pending",
+    )
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+
+    return schemas.DuesPaymentCheckoutResponse(
+        payment=_payment_out(payment),
+        payment_reference=reference,
+        checkout_url=checkout.authorization_url if checkout else None,
+        access_code=checkout.access_code if checkout else None,
+    )
 
 
 @payments_router.post("/{payment_id}/confirm", response_model=schemas.DuesPaymentOut)
