@@ -8,6 +8,16 @@ export type QuorumSession = {
   role_key?: string;
   access_token?: string;
   token_type?: string;
+  workspaces?: QuorumWorkspace[];
+};
+
+export type QuorumWorkspace = {
+  workspace_slug: string;
+  workspace_name: string;
+  member_id: number;
+  role: string;
+  role_key: string;
+  permissions: string[];
 };
 
 const SESSION_KEY = "quorum_session";

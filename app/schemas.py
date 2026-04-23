@@ -266,6 +266,37 @@ class LinkOut(LinkCreate):
     model_config = {"from_attributes": True}
 
 
+class AnnouncementCreate(BaseModel):
+    title: str = Field(min_length=2, max_length=180)
+    body: str = Field(min_length=2)
+    status: str = "published"
+    is_pinned: bool = False
+    published_at: datetime | None = None
+
+
+class AnnouncementUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=180)
+    body: str | None = Field(default=None, min_length=2)
+    status: str | None = None
+    is_pinned: bool | None = None
+    published_at: datetime | None = None
+
+
+class AnnouncementOut(BaseModel):
+    id: int
+    workspace_id: int
+    title: str
+    body: str
+    status: str
+    is_pinned: bool
+    published_at: datetime | None = None
+    archived_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class AuthLoginRequest(BaseModel):
     workspace_slug: str | None = None
     email: str
@@ -282,6 +313,7 @@ class AuthLoginResponse(BaseModel):
     role_key: str | None = None
     access_token: str | None = None
     token_type: str = "bearer"
+    workspaces: list["AuthMeWorkspace"] = Field(default_factory=list)
 
 
 class AuthRegisterRequest(BaseModel):
@@ -380,3 +412,4 @@ class WorkspaceOverview(BaseModel):
     active_campaigns: list[CampaignOut]
     dues_cycles: list[DuesCycleOut]
     links: list[LinkOut]
+    announcements: list[AnnouncementOut]

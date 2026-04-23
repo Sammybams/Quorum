@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { apiGet } from "@/lib/api";
+import DashboardGreeting from "./dashboard-greeting";
 
 type Overview = {
   workspace: { id: number; name: string; slug: string; description?: string };
@@ -23,6 +24,14 @@ type Overview = {
   }>;
   dues_cycles: Array<{ id: number; name: string; amount: number; deadline?: string }>;
   links: Array<{ id: number; slug: string; click_count: number; is_active: boolean }>;
+  announcements: Array<{
+    id: number;
+    title: string;
+    body: string;
+    status: string;
+    is_pinned: boolean;
+    published_at?: string | null;
+  }>;
 };
 
 export default async function DashboardPage({ params }: { params: { workspaceSlug: string } }) {
@@ -54,11 +63,18 @@ export default async function DashboardPage({ params }: { params: { workspaceSlu
 
   return (
     <section className="page-stack">
-      <header className="page-head">
-        <p className="eyebrow">Home dashboard</p>
-        <h1>{workspace.name}</h1>
-        <p>{workspace.description || "Your workspace is ready. Add your real members and launch the first activity."}</p>
-      </header>
+      {counts.pending_members > 0 ? (
+        <div className="alert-banner">
+          <span className="alert-text">
+            {counts.pending_members} {counts.pending_members === 1 ? "member has" : "members have"} not paid dues yet.
+          </span>
+          <Link href={`/${workspace.slug}/dues`} className="alert-link">
+            View report
+          </Link>
+        </div>
+      ) : null}
+
+      <DashboardGreeting workspaceName={workspace.name} workspaceDescription={workspace.description} />
 
       {counts.members <= 1 && counts.events === 0 && counts.campaigns === 0 ? (
         <section className="onboarding-panel">
@@ -85,6 +101,7 @@ export default async function DashboardPage({ params }: { params: { workspaceSlu
           </span>
           <small>Total members</small>
           <strong>{counts.members}</strong>
+          <p>{counts.members <= 1 ? "Fresh workspace" : "Active registry"}</p>
         </article>
         <article className="metric-card">
           <span className="material-symbols-outlined" aria-hidden="true">
@@ -100,13 +117,13 @@ export default async function DashboardPage({ params }: { params: { workspaceSlu
           </span>
           <small>Events</small>
           <strong>{counts.events}</strong>
-          <p>Published activities</p>
+          <p>{overview.recent_events.length} recent</p>
         </article>
         <article className="metric-card">
           <span className="material-symbols-outlined" aria-hidden="true">
             monitoring
           </span>
-          <small>Campaign progress</small>
+          <small>Campaign</small>
           <strong>{campaignProgress}%</strong>
           <p>{activeCampaign?.name || "No active campaign"}</p>
         </article>
@@ -179,6 +196,27 @@ export default async function DashboardPage({ params }: { params: { workspaceSlu
                   <div key={cycle.id}>
                     <span>{cycle.name}</span>
                     <strong>NGN {cycle.amount.toLocaleString()}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="panel-card">
+            <div className="card-head compact">
+              <h2>Announcements</h2>
+              <Link href={`/${workspace.slug}/announcements`} className="subtle-link">
+                Open
+              </Link>
+            </div>
+            {overview.announcements.length === 0 ? (
+              <EmptyBlock icon="campaign" title="No announcements" text="Publish updates for members and portal visitors." />
+            ) : (
+              <div className="mini-list">
+                {overview.announcements.map((announcement) => (
+                  <div key={announcement.id}>
+                    <span>{announcement.is_pinned ? "Pinned" : "Published"}</span>
+                    <strong>{announcement.title}</strong>
                   </div>
                 ))}
               </div>

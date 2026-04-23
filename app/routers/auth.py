@@ -24,6 +24,7 @@ def _auth_response(workspace: models.Workspace, membership: models.WorkspaceMemb
         user_id=membership.user_id,
         role_key=membership.role.key,
         access_token=token,
+        workspaces=[_workspace_member_out(item) for item in membership.user.workspace_memberships if item.status == "active"],
     )
 
 
@@ -107,41 +108,54 @@ def register(payload: schemas.AuthRegisterRequest, db: Session = Depends(get_db)
 def login(payload: schemas.AuthLoginRequest, db: Session = Depends(get_db)):
     email = payload.email.strip().lower()
     workspace_slug = payload.workspace_slug.strip().lower() if payload.workspace_slug else None
-    if not workspace_slug:
-        raise HTTPException(status_code=422, detail="Workspace slug is required")
 
-    workspace = db.query(models.Workspace).filter(models.Workspace.slug == workspace_slug).first()
-    if not workspace:
-        raise HTTPException(status_code=404, detail="Workspace not found")
-
-    ensure_default_roles(db, workspace.id)
-    sync_workspace_members_from_legacy(db, workspace)
-
-    membership = (
-        db.query(models.WorkspaceMember)
-        .join(models.User, models.WorkspaceMember.user_id == models.User.id)
-        .filter(
-            models.WorkspaceMember.workspace_id == workspace.id,
-            models.User.email == email,
-            models.WorkspaceMember.status == "active",
-        )
-        .first()
-    )
-    if not membership:
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
         raise HTTPException(status_code=401, detail="Invalid login details")
 
     password = payload.password or ""
-    if membership.user.password_hash:
-        if not verify_password(password, membership.user.password_hash):
+    if user.password_hash:
+        if not verify_password(password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid login details")
     else:
         if not password:
             raise HTTPException(status_code=401, detail="Password is required")
-        membership.user.password_hash = hash_password(password)
+        user.password_hash = hash_password(password)
         db.commit()
-        db.refresh(membership)
+        db.refresh(user)
 
-    return _auth_response(workspace, membership)
+    for workspace in db.query(models.Workspace).all():
+        ensure_default_roles(db, workspace.id)
+        sync_workspace_members_from_legacy(db, workspace)
+
+    query = (
+        db.query(models.WorkspaceMember)
+        .join(models.Workspace, models.WorkspaceMember.workspace_id == models.Workspace.id)
+        .filter(models.WorkspaceMember.user_id == user.id, models.WorkspaceMember.status == "active")
+    )
+    if workspace_slug:
+        query = query.filter(models.Workspace.slug == workspace_slug)
+
+    memberships = query.order_by(models.Workspace.name.asc()).all()
+    if not memberships:
+        raise HTTPException(status_code=401, detail="No active workspace membership found")
+
+    if workspace_slug or len(memberships) == 1:
+        membership = memberships[0]
+        return _auth_response(membership.workspace, membership)
+
+    token = create_access_token(str(user.id), {"workspace_id": None, "member_id": None, "role": None})
+    return schemas.AuthLoginResponse(
+        workspace_slug="",
+        workspace_name="",
+        member_id=0,
+        member_name=user.full_name,
+        member_role="",
+        user_id=user.id,
+        role_key=None,
+        access_token=token,
+        workspaces=[_workspace_member_out(membership) for membership in memberships],
+    )
 
 
 @router.get("/me", response_model=schemas.AuthMeResponse)

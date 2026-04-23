@@ -96,6 +96,16 @@ def get_workspace_overview(slug: str, db: Session = Depends(get_db)):
         .limit(4)
         .all()
     )
+    announcements = (
+        db.query(models.Announcement)
+        .filter(
+            models.Announcement.workspace_id == workspace.id,
+            models.Announcement.status == "published",
+        )
+        .order_by(models.Announcement.is_pinned.desc(), models.Announcement.published_at.desc())
+        .limit(4)
+        .all()
+    )
 
     return schemas.WorkspaceOverview(
         workspace=workspace,
@@ -112,6 +122,7 @@ def get_workspace_overview(slug: str, db: Session = Depends(get_db)):
         active_campaigns=active_campaigns,
         dues_cycles=dues_cycles,
         links=links,
+        announcements=announcements,
     )
 
 

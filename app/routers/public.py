@@ -140,6 +140,17 @@ def get_public_portal(workspace_slug: str, db: Session = Depends(get_db)):
         .all()
     )
 
+    announcements = (
+        db.query(models.Announcement)
+        .filter(
+            models.Announcement.workspace_id == workspace.id,
+            models.Announcement.status == "published",
+        )
+        .order_by(models.Announcement.is_pinned.desc(), models.Announcement.published_at.desc())
+        .limit(5)
+        .all()
+    )
+
     return {
         "workspace": {
             "name": workspace.name,
@@ -148,6 +159,15 @@ def get_public_portal(workspace_slug: str, db: Session = Depends(get_db)):
         },
         "links": [{"slug": l.slug, "destination_url": l.destination_url, "click_count": l.click_count} for l in links],
         "events": [{"title": e.title, "slug": e.slug, "starts_at": e.starts_at, "venue": e.venue} for e in events],
+        "announcements": [
+            {
+                "title": announcement.title,
+                "body": announcement.body,
+                "is_pinned": announcement.is_pinned,
+                "published_at": announcement.published_at,
+            }
+            for announcement in announcements
+        ],
     }
 
 

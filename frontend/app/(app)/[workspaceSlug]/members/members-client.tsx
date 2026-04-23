@@ -60,13 +60,20 @@ export default function MembersClient({
 
   const inviteUrl = useMemo(() => {
     const token = inviteLinks.find((link) => link.is_active)?.token;
-    if (typeof window === "undefined") {
-      return token ? `/join/${token}` : `/portal/${workspace.slug}`;
+    if (!token) {
+      return null;
     }
-    return token ? `${window.location.origin}/join/${token}` : `${window.location.origin}/portal/${workspace.slug}`;
-  }, [inviteLinks, workspace.slug]);
+    if (typeof window === "undefined") {
+      return `/join/${token}`;
+    }
+    return `${window.location.origin}/join/${token}`;
+  }, [inviteLinks]);
 
   async function copyInviteLink() {
+    if (!inviteUrl) {
+      setError("Generate a bulk invite link before copying.");
+      return;
+    }
     await navigator.clipboard.writeText(inviteUrl);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
@@ -106,7 +113,7 @@ export default function MembersClient({
       const invitation = await apiPost<Invitation, { email: string; role_id: number; note?: string }>(
         `/workspaces/${workspace.id}/invitations`,
         {
-        email: email.trim().toLowerCase(),
+          email: email.trim().toLowerCase(),
           role_id: roleId,
           note: note.trim() || undefined,
         },
@@ -216,13 +223,13 @@ export default function MembersClient({
             </div>
 
             <div className="invite-link-box">
-              <span>{inviteUrl}</span>
-              <button type="button" className="btn-secondary" onClick={copyInviteLink}>
+              <span>{inviteUrl || "No bulk invite link yet. Generate one to copy a /join link."}</span>
+              <button type="button" className="btn-secondary" onClick={copyInviteLink} disabled={!inviteUrl}>
                 {copied ? "Copied" : "Copy link"}
               </button>
             </div>
-            <button type="button" className="btn-ghost" onClick={createInviteLink} disabled={loading}>
-              Generate bulk invite link
+            <button type="button" className="btn-primary" onClick={createInviteLink} disabled={loading || !roleId}>
+              {inviteUrl ? "Generate another invite link" : "Generate bulk invite link"}
             </button>
 
             <form className="form-stack" onSubmit={onSubmit}>

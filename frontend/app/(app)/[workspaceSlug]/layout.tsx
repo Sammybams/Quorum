@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { clearSession, readSession, type QuorumSession } from "@/lib/session";
+import { clearSession, readSession, saveSession, type QuorumSession, type QuorumWorkspace } from "@/lib/session";
 
 const navItems = [
   { label: "Dashboard", icon: "dashboard", href: "dashboard" },
@@ -14,6 +14,7 @@ const navItems = [
   { label: "Fundraising", icon: "payments", href: "campaigns" },
   { label: "Dues", icon: "receipt_long", href: "dues" },
   { label: "Links", icon: "link", href: "links" },
+  { label: "Announcements", icon: "campaign", href: "announcements" },
   { label: "Settings", icon: "settings", href: "settings/roles" },
 ];
 
@@ -27,15 +28,72 @@ export default function WorkspaceLayout({
   const base = `/${params.workspaceSlug}`;
   const router = useRouter();
   const [session, setSession] = useState<QuorumSession | null>(null);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const workspaceName = session?.workspace_name || params.workspaceSlug;
+  const workspaceLabel = workspaceName
+    .split("-")
+    .join(" ")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 
   useEffect(() => {
     setSession(readSession());
   }, []);
 
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (workspaceMenuRef.current && !workspaceMenuRef.current.contains(target)) {
+        setWorkspaceOpen(false);
+      }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        setProfileOpen(false);
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setWorkspaceOpen(false);
+        setProfileOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
   function signOut() {
     clearSession();
     router.push("/login");
+  }
+
+  function switchWorkspace(workspace: QuorumWorkspace) {
+    if (!session) {
+      return;
+    }
+    const nextSession: QuorumSession = {
+      ...session,
+      workspace_slug: workspace.workspace_slug,
+      workspace_name: workspace.workspace_name,
+      member_id: workspace.member_id,
+      member_role: workspace.role,
+      role_key: workspace.role_key,
+    };
+    saveSession(nextSession);
+    setSession(nextSession);
+    setWorkspaceOpen(false);
+    router.push(`/${workspace.workspace_slug}/dashboard`);
   }
 
   const initials = session?.member_name
@@ -54,7 +112,7 @@ export default function WorkspaceLayout({
           <img className="brand-logo-img" src="/brand/quorum-icon-circle.svg" alt="" />
           <span>
             <strong>Quorum</strong>
-            <small>Student Body Admin</small>
+            <small>{workspaceLabel || "Student Body Admin"}</small>
           </span>
         </Link>
 
@@ -87,11 +145,48 @@ export default function WorkspaceLayout({
 
       <div className="workspace-frame">
         <header className="topbar">
-          <div className="workspace-pill">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              expand_more
-            </span>
-            {params.workspaceSlug}
+          <div className="workspace-switcher" ref={workspaceMenuRef}>
+            <button
+              type="button"
+              className="workspace-pill"
+              title={session?.workspace_name || params.workspaceSlug}
+              aria-expanded={workspaceOpen}
+              onClick={() => {
+                setWorkspaceOpen((value) => !value);
+                setProfileOpen(false);
+              }}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                expand_more
+              </span>
+              {workspaceLabel || params.workspaceSlug}
+            </button>
+            {workspaceOpen ? (
+              <div className="workspace-menu">
+                {(session?.workspaces || []).length > 0 ? (
+                  session?.workspaces?.map((workspace) => (
+                    <button
+                      key={workspace.workspace_slug}
+                      type="button"
+                      className={workspace.workspace_slug === params.workspaceSlug ? "active" : ""}
+                      onClick={() => switchWorkspace(workspace)}
+                    >
+                      <span>
+                        <strong>{workspace.workspace_name}</strong>
+                        <small>{workspace.role}</small>
+                      </span>
+                      {workspace.workspace_slug === params.workspaceSlug ? (
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          check
+                        </span>
+                      ) : null}
+                    </button>
+                  ))
+                ) : (
+                  <p>Sign in again to load your communities.</p>
+                )}
+              </div>
+            ) : null}
           </div>
           <div className="topbar-actions">
             <button type="button" className="icon-button" aria-label="Notifications">
@@ -105,13 +200,16 @@ export default function WorkspaceLayout({
               </span>
               Create Event
             </Link>
-            <div className="profile-menu-wrap">
+            <div className="profile-menu-wrap" ref={profileMenuRef}>
               <button
                 type="button"
                 className="avatar-chip"
                 aria-label="Open profile menu"
                 aria-expanded={profileOpen}
-                onClick={() => setProfileOpen((value) => !value)}
+                onClick={() => {
+                  setProfileOpen((value) => !value);
+                  setWorkspaceOpen(false);
+                }}
               >
                 {initials}
               </button>

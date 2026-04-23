@@ -22,6 +22,7 @@ class Workspace(Base):
     events = relationship("Event", back_populates="workspace", cascade="all, delete-orphan")
     campaigns = relationship("Campaign", back_populates="workspace", cascade="all, delete-orphan")
     links = relationship("ShortLink", back_populates="workspace", cascade="all, delete-orphan")
+    announcements = relationship("Announcement", back_populates="workspace", cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -259,3 +260,20 @@ class ShortLink(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     workspace = relationship("Workspace", back_populates="links")
+
+
+class Announcement(Base):
+    __tablename__ = "announcements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id"), index=True)
+    title: Mapped[str] = mapped_column(String(180), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="published")
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    workspace = relationship("Workspace", back_populates="announcements")

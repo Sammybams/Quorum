@@ -136,8 +136,8 @@ export default function RolesPage({ params }: { params: { workspaceSlug: string 
 
       {error ? <p className="form-error">{error}</p> : null}
 
-      <section className="content-grid">
-        <article className="panel-card large">
+      <section className="settings-grid">
+        <article className="panel-card settings-roles-card">
           <div className="card-head">
             <h2>Workspace roles</h2>
           </div>
@@ -146,19 +146,26 @@ export default function RolesPage({ params }: { params: { workspaceSlug: string 
           ) : (
             <div className="role-list">
               {roles.map((role) => (
-                <button key={role.id} type="button" className="role-card" onClick={() => startEditing(role)}>
-                  <div>
-                    <h3>{role.name}</h3>
-                    <p>{role.description || (role.is_system_role ? "System role" : "Custom role")}</p>
+                <button
+                  key={role.id}
+                  type="button"
+                  className={`role-card ${editingRole?.id === role.id ? "active" : ""}`}
+                  onClick={() => startEditing(role)}
+                >
+                  <div className="role-card-main">
+                    <div>
+                      <h3>{role.name}</h3>
+                      <p>{role.description || (role.is_system_role ? "System role" : "Custom role")}</p>
+                    </div>
+                    <span className={`status-pill ${role.is_system_role ? "ok" : "pending"}`}>
+                      {role.is_system_role ? "System" : "Custom"}
+                    </span>
                   </div>
-                  <span className={`status-pill ${role.is_system_role ? "ok" : "pending"}`}>
-                    {role.is_system_role ? "System" : "Custom"}
-                  </span>
                   <div className="permission-chips">
-                    {role.permissions.slice(0, 8).map((permission) => (
+                    {role.permissions.slice(0, 10).map((permission) => (
                       <span key={permission}>{permission}</span>
                     ))}
-                    {role.permissions.length > 8 ? <span>+{role.permissions.length - 8} more</span> : null}
+                    {role.permissions.length > 10 ? <span>+{role.permissions.length - 10} more</span> : null}
                   </div>
                 </button>
               ))}
@@ -166,7 +173,7 @@ export default function RolesPage({ params }: { params: { workspaceSlug: string 
           )}
         </article>
 
-        <article className="panel-card">
+        <article className="panel-card settings-editor-card">
           <div className="card-head compact">
             <h2>{editingRole ? "Edit role" : "Create role"}</h2>
             {editingRole ? (
