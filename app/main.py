@@ -40,3 +40,15 @@ app.include_router(campaigns.router, prefix=api_prefix)
 app.include_router(links.router, prefix=api_prefix)
 app.include_router(public.router, prefix=api_prefix)
 app.include_router(webhooks.router, prefix=api_prefix)
+
+
+@app.get("/")
+def root():
+    return {
+        "name": os.getenv("APP_NAME", "Quorum API"),
+        "project": "Quorum",
+        "description": "Multi-tenant platform for student-body operations.",
+        "api_prefix": api_prefix,
+        "docs": app.docs_url,
+        "openapi": app.openapi_url,
+    }
