@@ -81,7 +81,7 @@ export default async function DashboardPage({ params }: { params: { workspaceSlu
           <div>
             <p className="eyebrow">Fresh workspace</p>
             <h2>Start with the essentials</h2>
-            <p>No demo data has been added. Build this workspace with your own members, events, dues, and campaigns.</p>
+            <p>Add your first members, schedule events, set dues, and launch campaigns when this community is ready.</p>
           </div>
           <div className="onboarding-actions">
             <Link href={`/${workspace.slug}/members`} className="btn-primary">

@@ -206,10 +206,45 @@ p {
   border: 1px solid var(--outline);
   border-radius: 8px;
   color: var(--text);
-  min-height: 34px;
+  min-height: 36px;
   outline: none;
   padding: 0 10px;
   width: 100%;
+}
+
+.form-stack select {
+  appearance: none;
+  padding-right: 34px;
+}
+
+.select-shell {
+  display: block;
+  position: relative;
+  width: 100%;
+}
+
+.select-shell select {
+  cursor: pointer;
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  height: 40px;
+  line-height: 1.2;
+}
+
+.select-shell .material-symbols-outlined {
+  color: var(--text-muted);
+  font-size: 18px;
+  pointer-events: none;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.select-shell:focus-within select {
+  background: var(--surface-lowest);
+  box-shadow: 0 3px 0 var(--primary);
 }
 
 .slug-field {
@@ -254,6 +289,10 @@ p {
   box-shadow: 0 3px 0 var(--primary);
 }
 
+.select-shell select:focus {
+  box-shadow: none;
+}
+
 .input-shell {
   align-items: center;
   background: var(--surface-low);
@@ -288,8 +327,7 @@ p {
 }
 
 .form-actions,
-.page-actions,
-.onboarding-actions {
+.page-actions {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
@@ -555,7 +593,7 @@ p {
   border-bottom: 1px solid var(--outline);
   display: flex;
   gap: 8px;
-  min-height: 54px;
+  min-height: 56px;
   padding: 12px 16px;
 }
 
@@ -574,9 +612,15 @@ p {
 }
 
 .brand-logo-img {
+  flex: 0 0 auto;
   display: block;
   height: 26px;
   width: 26px;
+}
+
+.brand-copy {
+  display: block;
+  min-width: 0;
 }
 
 .brand-block strong {
@@ -593,7 +637,7 @@ p {
   font-size: 10px;
   font-weight: 400;
   line-height: 1.2;
-  max-width: 136px;
+  max-width: 132px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -692,8 +736,8 @@ p {
   display: flex;
   gap: 12px;
   justify-content: space-between;
-  min-height: 44px;
-  padding: 0 20px;
+  min-height: 56px;
+  padding: 0 16px;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -706,23 +750,31 @@ p {
   border-radius: 0;
   color: var(--text);
   display: inline-flex;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   gap: 6px;
   min-width: 0;
-  max-width: 320px;
-  overflow: hidden;
+  max-width: min(460px, 44vw);
   padding: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .workspace-pill .material-symbols-outlined {
   color: var(--text-subtle);
+  flex: 0 0 auto;
   font-size: 16px;
 }
 
+.workspace-pill-text {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workspace-switcher {
+  align-items: center;
+  display: flex;
   min-width: 0;
   position: relative;
 }
@@ -769,6 +821,10 @@ p {
   display: block;
   font-size: 12px;
   font-weight: 600;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-menu small,
@@ -973,22 +1029,43 @@ p {
 }
 
 .onboarding-panel {
-  align-items: center;
-  display: flex;
-  gap: 12px;
+  align-items: start;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 16px 18px;
+}
+
+.onboarding-panel > div:first-child {
+  min-width: 0;
+}
+
+.onboarding-panel .eyebrow {
+  margin-bottom: 6px;
 }
 
 .onboarding-panel h2 {
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 2px;
+  line-height: 1.25;
+  margin-bottom: 6px;
 }
 
 .onboarding-panel p {
   color: var(--text-muted);
+  line-height: 1.45;
   margin-bottom: 0;
+  max-width: 720px;
+}
+
+.onboarding-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 18px;
 }
 
 .metrics-grid {
@@ -1289,7 +1366,7 @@ p {
   display: flex;
   gap: 12px;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   padding: 8px;
 }
 
@@ -1306,6 +1383,13 @@ p {
 .invite-link-box .btn-secondary {
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+.invite-link-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
 .payment-link-box {
@@ -2028,7 +2112,20 @@ p {
   .onboarding-panel,
   .topbar {
     align-items: flex-start;
+  }
+
+  .page-head.row,
+  .topbar {
     flex-direction: column;
+  }
+
+  .onboarding-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-actions {
+    justify-content: flex-start;
+    padding-top: 0;
   }
 
   .topbar-actions {

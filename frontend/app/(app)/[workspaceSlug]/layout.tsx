@@ -33,14 +33,7 @@ export default function WorkspaceLayout({
   const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const workspaceName = session?.workspace_name || params.workspaceSlug;
-  const workspaceLabel = workspaceName
-    .split("-")
-    .join(" ")
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 3)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  const workspaceLabel = workspaceName.split("-").join(" ");
 
   useEffect(() => {
     setSession(readSession());
@@ -110,9 +103,9 @@ export default function WorkspaceLayout({
       <aside className="side-nav">
         <Link href={`${base}/dashboard`} className="brand-block">
           <img className="brand-logo-img" src="/brand/quorum-icon-circle.svg" alt="" />
-          <span>
+          <span className="brand-copy">
             <strong>Quorum</strong>
-            <small>{workspaceLabel || "Student Body Admin"}</small>
+            <small title={workspaceLabel || "Student Body Admin"}>{workspaceLabel || "Student Body Admin"}</small>
           </span>
         </Link>
 
@@ -159,7 +152,7 @@ export default function WorkspaceLayout({
               <span className="material-symbols-outlined" aria-hidden="true">
                 expand_more
               </span>
-              {workspaceLabel || params.workspaceSlug}
+              <span className="workspace-pill-text">{workspaceLabel || params.workspaceSlug}</span>
             </button>
             {workspaceOpen ? (
               <div className="workspace-menu">

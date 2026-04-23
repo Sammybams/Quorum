@@ -224,13 +224,15 @@ export default function MembersClient({
 
             <div className="invite-link-box">
               <span>{inviteUrl || "No bulk invite link yet. Generate one to copy a /join link."}</span>
-              <button type="button" className="btn-secondary" onClick={copyInviteLink} disabled={!inviteUrl}>
-                {copied ? "Copied" : "Copy link"}
-              </button>
+              <div className="invite-link-actions">
+                <button type="button" className="btn-secondary" onClick={createInviteLink} disabled={loading || !roleId}>
+                  {inviteUrl ? "Regenerate link" : "Generate link"}
+                </button>
+                <button type="button" className="btn-secondary" onClick={copyInviteLink} disabled={!inviteUrl}>
+                  {copied ? "Copied" : "Copy link"}
+                </button>
+              </div>
             </div>
-            <button type="button" className="btn-primary" onClick={createInviteLink} disabled={loading || !roleId}>
-              {inviteUrl ? "Generate another invite link" : "Generate bulk invite link"}
-            </button>
 
             <form className="form-stack" onSubmit={onSubmit}>
               <label>
@@ -245,13 +247,18 @@ export default function MembersClient({
               </label>
               <label>
                 Role
-                <select value={roleId || ""} onChange={(event) => setRoleId(Number(event.target.value))}>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
+                <span className="select-shell">
+                  <select value={roleId || ""} onChange={(event) => setRoleId(Number(event.target.value))}>
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    expand_more
+                  </span>
+                </span>
               </label>
               <label>
                 Personal note
