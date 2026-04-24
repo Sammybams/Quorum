@@ -22,6 +22,8 @@ type Invitation = {
   token: string;
   status: string;
   email_delivery_status?: string | null;
+  email_delivery_provider?: string | null;
+  email_delivery_sender?: string | null;
   expires_at?: string | null;
 };
 type InviteLink = { id: number; token: string; role_name: string; is_active: boolean };
@@ -191,7 +193,7 @@ export default function MembersClient({
                 <div>
                   <strong>{invitation.email}</strong>
                   <span>
-                    {invitation.role_name} · {deliveryLabel(invitation.email_delivery_status)}
+                    {invitation.role_name} · {deliveryLabel(invitation.email_delivery_status, invitation.email_delivery_provider, invitation.email_delivery_sender)}
                     {invitation.expires_at ? ` · expires ${new Date(invitation.expires_at).toLocaleDateString()}` : ""}
                   </span>
                 </div>
@@ -333,7 +335,7 @@ export default function MembersClient({
                     <div className="invite-modal-row" key={invitation.id}>
                       <div>
                         <span>{invitation.email}</span>
-                        <strong>{invitation.role_name} · {deliveryLabel(invitation.email_delivery_status)}</strong>
+                        <strong>{invitation.role_name} · {deliveryLabel(invitation.email_delivery_status, invitation.email_delivery_provider, invitation.email_delivery_sender)}</strong>
                       </div>
                       <button type="button" className="btn-secondary" onClick={() => copyDirectInvite(invitation)}>
                         {copiedInviteId === invitation.id ? "Copied" : "Copy link"}
@@ -359,15 +361,24 @@ export default function MembersClient({
   );
 }
 
-function deliveryLabel(status?: string | null) {
+function deliveryLabel(status?: string | null, provider?: string | null, sender?: string | null) {
   if (status === "sent") {
-    return "email sent";
+    if (provider === "google") {
+      return sender ? `sent from Gmail (${sender})` : "sent from Gmail";
+    }
+    if (provider === "smtp_fallback") {
+      return sender ? `sent by Quorum mail after Gmail fallback (${sender})` : "sent by Quorum mail after Gmail fallback";
+    }
+    return sender ? `sent by Quorum mail (${sender})` : "email sent";
   }
   if (status === "failed") {
+    if (provider === "google") {
+      return "Gmail send failed";
+    }
     return "email failed";
   }
   if (status === "not_configured") {
-    return "email not configured";
+    return "Google or SMTP delivery not configured";
   }
   return "email pending";
 }

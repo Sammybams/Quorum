@@ -234,19 +234,28 @@ The spec wants:
 
 ### Current Implementation
 
-This is **not implemented yet**.
+This is now implemented with fallback behavior:
 
-Invitation email today is handled through SMTP helpers in [app/email.py](/Users/sam/Documents/quorum/app/email.py:40), and the member invitation flows continue to use that path.
+1. the Google OAuth connection requests `https://www.googleapis.com/auth/gmail.send`
+2. invitation creation checks the workspace Google integration first
+3. if Gmail sending is available, Quorum sends the invite through the connected Gmail account
+4. if Google is not connected, the Gmail scope is missing, or the Gmail send fails, Quorum falls back to SMTP / transactional email
+
+The live pieces are:
+
+1. Gmail scope + sender helpers in [app/services/google.py](/Users/sam/Documents/quorum/app/services/google.py:20)
+2. invitation MIME builder + SMTP fallback in [app/email.py](/Users/sam/Documents/quorum/app/email.py:33)
+3. workspace invitation branching in [app/routers/invitations.py](/Users/sam/Documents/quorum/app/routers/invitations.py:17)
+4. integration UI messaging in [frontend/app/(app)/[workspaceSlug]/settings/integrations/page.tsx](/Users/sam/Documents/quorum/frontend/app/(app)/[workspaceSlug]/settings/integrations/page.tsx:86)
+5. invitation delivery status labels in [frontend/app/(app)/[workspaceSlug]/members/members-client.tsx](/Users/sam/Documents/quorum/frontend/app/(app)/[workspaceSlug]/members/members-client.tsx:362)
 
 ### Gap Versus Spec
 
 Still missing:
 
-1. `gmail.send` scope in Google OAuth
-2. Gmail API mail sender service
-3. connected-admin sender identity selection
-4. fallback branching from Gmail to Quorum transactional email
-5. UI that explains whether invitations are sending from Gmail or Quorum
+1. browser-tested live callback + Gmail send verification against a connected Google account
+2. alias / send-as management if a workspace wants a different sender than the connected account
+3. encryption-at-rest for the stored Google tokens
 
 ## 9. Security Mapping
 
@@ -291,7 +300,7 @@ This is the most important integration hardening task still outstanding.
 | Claude action item extraction to tasks | Yes | Implemented | Generated tasks are linked to meetings |
 | Fireflies transcript import | Partial | Implemented | Manual by transcript ID |
 | Fireflies webhook automation | Yes | Not implemented | No connect / validate / webhook registration yet |
-| Gmail invitation sending | Yes | Not implemented | Invitations still use SMTP |
+| Gmail invitation sending | Yes | Implemented | Gmail first, SMTP fallback |
 | Token encryption at rest | Yes | Not implemented | Needs hardening pass |
 
 ## 11. Recommended Build Order From Here
@@ -301,7 +310,7 @@ The cleanest next sequence is:
 1. Add encryption-at-rest for integration secrets.
 2. Add real Fireflies workspace connection and webhook registration.
 3. Add Google automatic transcript ingestion via Drive watch or Workspace Events.
-4. Add Gmail invitation sending through the existing Google connection.
+4. Expand Gmail sending with browser-tested alias / sender management if needed.
 
 That order hardens the current implementation before expanding the automation surface.
 
@@ -318,10 +327,9 @@ What is testable now:
 
 What is not yet testable as an implemented product path:
 
-1. Gmail invitation sending through Google
-2. automatic Drive-watch transcript pulling
-3. Fireflies webhook-driven transcript delivery
-4. encrypted secret storage verification
+1. automatic Drive-watch transcript pulling
+2. Fireflies webhook-driven transcript delivery
+3. encrypted secret storage verification
 
 ## 13. Practical Notes For The E2E Pass
 

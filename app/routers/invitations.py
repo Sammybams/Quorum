@@ -8,6 +8,7 @@ from ..database import MongoStore, get_db
 from ..email import send_invitation_email
 from ..rbac import require_workspace_permission
 from ..security import hash_password
+from ..services.google import GoogleIntegrationError, access_token_for_integration, gmail_send_available, send_gmail_invitation
 from .auth import _auth_response
 
 router = APIRouter(prefix="/workspaces/{workspace_id}", tags=["invitations"])
@@ -40,18 +41,21 @@ def create_invitation(
             "note": payload.note,
             "status": "pending",
             "email_delivery_status": "pending",
+            "email_delivery_provider": None,
+            "email_delivery_sender": None,
             "expires_at": datetime.utcnow() + timedelta(hours=72),
         },
     )
-    email_result = send_invitation_email(
-        to_email=invitation.email,
-        workspace_name=workspace.name,
-        role_name=role.name,
-        token=invitation.token,
-        note=payload.note,
-        reply_to=inviter.email if inviter else None,
+    email_result = _send_workspace_invitation_email(
+        db,
+        workspace=workspace,
+        inviter=inviter,
+        role=role,
+        invitation=invitation,
     )
     invitation["email_delivery_status"] = email_result.status
+    invitation["email_delivery_provider"] = email_result.provider
+    invitation["email_delivery_sender"] = email_result.sender
     if email_result.error:
         invitation["email_delivery_error"] = email_result.error[:500]
     invitation = db.save("invitations", invitation)
@@ -222,6 +226,8 @@ def _invitation_out(db: MongoStore, invitation: models.Invitation) -> schemas.In
         token=invitation.token,
         status=invitation.status,
         email_delivery_status=invitation.get("email_delivery_status"),
+        email_delivery_provider=invitation.get("email_delivery_provider"),
+        email_delivery_sender=invitation.get("email_delivery_sender"),
         expires_at=invitation.get("expires_at"),
         created_at=invitation.created_at,
     )
@@ -270,3 +276,61 @@ def _ensure_membership(
 
 def _is_expired(expires_at: datetime | None) -> bool:
     return bool(expires_at and expires_at < datetime.utcnow())
+
+
+def _send_workspace_invitation_email(
+    db: MongoStore,
+    *,
+    workspace: models.Workspace,
+    inviter: models.User | None,
+    role: models.Role,
+    invitation: models.Invitation,
+):
+    integration = db.find_one("integrations", {"workspace_id": workspace.id, "provider": "google_workspace"})
+
+    if gmail_send_available(integration):
+        try:
+            access_token, expires_at = access_token_for_integration(integration)
+            integration["expires_at"] = expires_at
+            integration["updated_at"] = datetime.utcnow()
+            db.save("integrations", integration)
+            google_result = send_gmail_invitation(
+                access_token=access_token,
+                connected_email=integration.get("connected_email") or "",
+                sender_name=(inviter.full_name if inviter else None) or integration.get("connected_name") or workspace.name,
+                to_email=invitation.email,
+                workspace_name=workspace.name,
+                role_name=role.name,
+                token=invitation.token,
+                note=invitation.get("note"),
+                reply_to=inviter.email if inviter else None,
+            )
+            if google_result.status == "sent":
+                return google_result
+            smtp_result = send_invitation_email(
+                to_email=invitation.email,
+                workspace_name=workspace.name,
+                role_name=role.name,
+                token=invitation.token,
+                note=invitation.get("note"),
+                reply_to=inviter.email if inviter else None,
+            )
+            if smtp_result.status == "sent":
+                return type(smtp_result)(
+                    status=smtp_result.status,
+                    error=google_result.error,
+                    provider="smtp_fallback",
+                    sender=smtp_result.sender,
+                )
+            return smtp_result
+        except GoogleIntegrationError as exc:
+            invitation["email_delivery_error"] = str(exc)[:500]
+
+    return send_invitation_email(
+        to_email=invitation.email,
+        workspace_name=workspace.name,
+        role_name=role.name,
+        token=invitation.token,
+        note=invitation.get("note"),
+        reply_to=inviter.email if inviter else None,
+    )

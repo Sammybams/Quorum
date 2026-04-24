@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 
 import { apiPost } from "@/lib/api";
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -33,20 +33,40 @@ export default function VerifyEmailPage() {
   }, [token]);
 
   return (
+    <div className="auth-card">
+      <div className="auth-card-head">
+        <p className="eyebrow">Email verification</p>
+        <h2>{state === "success" ? "Email verified" : "Verify email"}</h2>
+        <p>{message}</p>
+      </div>
+      <div className="form-actions">
+        <Link href="/login" className="btn-primary">
+          Go to login
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function VerifyEmailFallback() {
+  return (
+    <div className="auth-card">
+      <div className="auth-card-head">
+        <p className="eyebrow">Email verification</p>
+        <h2>Verify email</h2>
+        <p>Checking your verification link...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
     <main className="auth-screen">
       <section className="auth-form-area auth-form-area-centered">
-        <div className="auth-card">
-          <div className="auth-card-head">
-            <p className="eyebrow">Email verification</p>
-            <h2>{state === "success" ? "Email verified" : "Verify email"}</h2>
-            <p>{message}</p>
-          </div>
-          <div className="form-actions">
-            <Link href="/login" className="btn-primary">
-              Go to login
-            </Link>
-          </div>
-        </div>
+        <Suspense fallback={<VerifyEmailFallback />}>
+          <VerifyEmailContent />
+        </Suspense>
       </section>
     </main>
   );

@@ -10,6 +10,8 @@ from email.message import EmailMessage
 class EmailResult:
     status: str
     error: str | None = None
+    provider: str | None = None
+    sender: str | None = None
 
 
 def _smtp_configured() -> bool:
@@ -47,11 +49,41 @@ def send_invitation_email(
     reply_to: str | None = None,
 ) -> EmailResult:
     if not _smtp_configured():
-        return EmailResult(status="not_configured")
+        return EmailResult(status="not_configured", provider="smtp")
 
-    link = invitation_url(token)
     from_email = os.getenv("SMTP_FROM_EMAIL", "")
     from_name = os.getenv("SMTP_FROM_NAME", "Quorum")
+    message = build_invitation_email(
+        to_email=to_email,
+        workspace_name=workspace_name,
+        role_name=role_name,
+        token=token,
+        note=note,
+        reply_to=reply_to,
+        from_email=from_email,
+        from_name=from_name,
+    )
+
+    try:
+        _deliver(message)
+    except Exception as exc:  # SMTP providers raise several different exception types.
+        return EmailResult(status="failed", error=str(exc), provider="smtp", sender=from_email)
+
+    return EmailResult(status="sent", provider="smtp", sender=from_email)
+
+
+def build_invitation_email(
+    *,
+    to_email: str,
+    workspace_name: str,
+    role_name: str,
+    token: str,
+    note: str | None = None,
+    reply_to: str | None = None,
+    from_email: str,
+    from_name: str,
+) -> EmailMessage:
+    link = invitation_url(token)
     subject = f"Join {workspace_name} on Quorum"
 
     safe_workspace = html.escape(workspace_name)
@@ -105,31 +137,7 @@ def send_invitation_email(
         """,
         subtype="html",
     )
-
-    try:
-        host = os.getenv("SMTP_HOST", "")
-        port = int(os.getenv("SMTP_PORT", "587"))
-        username = os.getenv("SMTP_USERNAME")
-        password = os.getenv("SMTP_PASSWORD")
-        use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
-        use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
-
-        if use_ssl:
-            with smtplib.SMTP_SSL(host, port, context=ssl.create_default_context(), timeout=10) as server:
-                if username and password:
-                    server.login(username, password)
-                server.send_message(message)
-        else:
-            with smtplib.SMTP(host, port, timeout=10) as server:
-                if use_tls:
-                    server.starttls(context=ssl.create_default_context())
-                if username and password:
-                    server.login(username, password)
-                server.send_message(message)
-    except Exception as exc:  # SMTP providers raise several different exception types.
-        return EmailResult(status="failed", error=str(exc))
-
-    return EmailResult(status="sent")
+    return message
 
 
 def send_verification_email(*, to_email: str, full_name: str, token: str) -> EmailResult:

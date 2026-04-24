@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
 
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 
@@ -18,7 +18,7 @@ type Integration = {
   metadata: Record<string, string>;
 };
 
-export default function IntegrationsPage({ params }: { params: { workspaceSlug: string } }) {
+function IntegrationsPageContent({ params }: { params: { workspaceSlug: string } }) {
   const searchParams = useSearchParams();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [integration, setIntegration] = useState<Integration | null>(null);
@@ -44,6 +44,11 @@ export default function IntegrationsPage({ params }: { params: { workspaceSlug: 
 
     load();
   }, [params.workspaceSlug]);
+
+  const needsGoogleReconnect = useMemo(
+    () => integration?.status === "connected" && integration?.metadata?.gmail !== "available",
+    [integration],
+  );
 
   async function connectGoogle() {
     if (!workspace) {
@@ -71,7 +76,17 @@ export default function IntegrationsPage({ params }: { params: { workspaceSlug: 
     setError(null);
     try {
       await apiDelete(`/workspaces/${workspace.id}/integrations/google`);
-      setIntegration((current) => (current ? { ...current, status: "not_connected", connected_email: null, connected_at: null } : current));
+      setIntegration((current) =>
+        current
+          ? {
+              ...current,
+              status: "not_connected",
+              connected_email: null,
+              connected_at: null,
+              metadata: { ...current.metadata, gmail: "available" },
+            }
+          : current,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to disconnect Google Workspace.");
     } finally {
@@ -100,13 +115,13 @@ export default function IntegrationsPage({ params }: { params: { workspaceSlug: 
           <div className="card-head">
             <div>
               <p className="eyebrow">Google Workspace</p>
-              <h2>Meet and Drive</h2>
+              <h2>Meet, Drive, and Gmail</h2>
             </div>
             <span className={`status-pill ${integration?.status === "connected" ? "ok" : "pending"}`}>
               {loading ? "Loading" : integration?.status === "connected" ? "Connected" : "Not connected"}
             </span>
           </div>
-          <p>Connect a Google account to generate Google Meet links and prepare Quorum for Drive-based transcript retrieval.</p>
+          <p>Connect a Google account once per workspace to create Meet links, sync transcripts, and send member invitations from the connected Gmail account.</p>
           <div className="mini-list">
             <div>
               <span>Account</span>
@@ -120,10 +135,25 @@ export default function IntegrationsPage({ params }: { params: { workspaceSlug: 
               <span>Connected at</span>
               <strong>{integration?.connected_at || "-"}</strong>
             </div>
+            <div>
+              <span>Invitations</span>
+              <strong>{needsGoogleReconnect ? "Reconnect Google to grant Gmail sending" : integration?.metadata?.gmail === "available" ? "Send from Gmail" : "Waiting for Google connection"}</strong>
+            </div>
           </div>
+          {needsGoogleReconnect ? (
+            <div className="status-note">
+              This workspace was connected before Gmail sending was added. Reconnect Google once so Quorum can request the Gmail permission and send invitations from <strong>{integration?.connected_email}</strong>.
+            </div>
+          ) : null}
           <div className="page-actions">
             <button type="button" className="btn-primary" onClick={connectGoogle} disabled={connecting || !integration?.configured}>
-              {connecting ? "Opening..." : integration?.status === "connected" ? "Reconnect Google" : "Connect Google"}
+              {connecting
+                ? "Opening..."
+                : needsGoogleReconnect
+                  ? "Reconnect for Gmail"
+                  : integration?.status === "connected"
+                    ? "Reconnect Google"
+                    : "Connect Google"}
             </button>
             {integration?.status === "connected" ? (
               <button type="button" className="btn-secondary" onClick={disconnectGoogle} disabled={connecting}>
@@ -147,6 +177,10 @@ export default function IntegrationsPage({ params }: { params: { workspaceSlug: 
             <div>
               <span>Drive</span>
               <strong>Foundation for transcript and artifact syncing</strong>
+            </div>
+            <div>
+              <span>Gmail</span>
+              <strong>Workspace invitations can come from the connected Google account</strong>
             </div>
             <div>
               <span>Next</span>
@@ -180,5 +214,39 @@ export default function IntegrationsPage({ params }: { params: { workspaceSlug: 
         </article>
       </section>
     </section>
+  );
+}
+
+function IntegrationsPageFallback({ params }: { params: { workspaceSlug: string } }) {
+  return (
+    <section className="page-stack">
+      <header className="page-head row">
+        <div>
+          <p className="eyebrow">Settings</p>
+          <h1>Integrations</h1>
+          <p>{params.workspaceSlug}</p>
+        </div>
+      </header>
+      <section className="content-grid">
+        <article className="panel-card">
+          <div className="card-head">
+            <div>
+              <p className="eyebrow">Google Workspace</p>
+              <h2>Meet, Drive, and Gmail</h2>
+            </div>
+            <span className="status-pill pending">Loading</span>
+          </div>
+          <p>Loading integration status...</p>
+        </article>
+      </section>
+    </section>
+  );
+}
+
+export default function IntegrationsPage({ params }: { params: { workspaceSlug: string } }) {
+  return (
+    <Suspense fallback={<IntegrationsPageFallback params={params} />}>
+      <IntegrationsPageContent params={params} />
+    </Suspense>
   );
 }

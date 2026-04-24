@@ -487,6 +487,8 @@ class InvitationOut(BaseModel):
     token: str
     status: str
     email_delivery_status: str | None = None
+    email_delivery_provider: str | None = None
+    email_delivery_sender: str | None = None
     expires_at: datetime | None = None
     created_at: datetime
 

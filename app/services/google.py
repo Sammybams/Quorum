@@ -1,18 +1,24 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from email.message import EmailMessage
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
 
+from ..email import EmailResult, build_invitation_email
+
 
 load_dotenv()
 
+
+GOOGLE_GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 
 GOOGLE_SCOPES = [
     "openid",
@@ -22,6 +28,7 @@ GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/documents.readonly",
     "https://www.googleapis.com/auth/meetings.space.created",
     "https://www.googleapis.com/auth/meetings.space.readonly",
+    GOOGLE_GMAIL_SEND_SCOPE,
 ]
 
 
@@ -48,6 +55,10 @@ class GoogleUserProfile:
 class GoogleMeetSpace:
     name: str
     meeting_uri: str
+
+
+def google_scope_set(scope_value: str | None) -> set[str]:
+    return {scope.strip() for scope in (scope_value or "").split() if scope.strip()}
 
 
 def google_configured() -> bool:
@@ -190,6 +201,59 @@ def access_token_for_integration(integration) -> tuple[str, datetime | None]:
     integration["scope"] = refreshed.scope
     integration["updated_at"] = datetime.utcnow()
     return refreshed.access_token, refreshed.expires_at
+
+
+def gmail_send_available(integration) -> bool:
+    if not integration or integration.get("status") != "connected":
+        return False
+    return GOOGLE_GMAIL_SEND_SCOPE in google_scope_set(integration.get("scope"))
+
+
+def send_gmail_invitation(
+    *,
+    access_token: str,
+    connected_email: str,
+    sender_name: str,
+    to_email: str,
+    workspace_name: str,
+    role_name: str,
+    token: str,
+    note: str | None = None,
+    reply_to: str | None = None,
+) -> EmailResult:
+    if not connected_email:
+        return EmailResult(status="failed", error="Connected Google account email was not available.", provider="google")
+
+    message = build_invitation_email(
+        to_email=to_email,
+        workspace_name=workspace_name,
+        role_name=role_name,
+        token=token,
+        note=note,
+        reply_to=reply_to,
+        from_email=connected_email,
+        from_name=sender_name,
+    )
+
+    try:
+        send_gmail_message(access_token=access_token, message=message)
+    except GoogleIntegrationError as exc:
+        return EmailResult(status="failed", error=str(exc)[:500], provider="google", sender=connected_email)
+
+    return EmailResult(status="sent", provider="google", sender=connected_email)
+
+
+def send_gmail_message(*, access_token: str, message: EmailMessage) -> dict:
+    raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8").rstrip("=")
+    return _google_request(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        method="POST",
+        data=json.dumps({"raw": raw_message}).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        },
+    )
 
 
 def _google_request(url: str, *, method: str = "GET", data: bytes | None = None, headers: dict[str, str] | None = None) -> dict:

@@ -16,6 +16,7 @@ from ..services.google import (
     GoogleIntegrationError,
     build_google_authorization_url,
     exchange_google_code,
+    gmail_send_available,
     get_google_profile,
     google_configured,
 )
@@ -36,6 +37,11 @@ def _frontend_base() -> str:
 
 
 def _google_integration_out(workspace_id: int, integration) -> schemas.IntegrationOut:
+    metadata = {
+        "meet": "available",
+        "drive": "available",
+        "gmail": "available" if gmail_send_available(integration) else ("reconnect_required" if integration else "available"),
+    }
     return schemas.IntegrationOut(
         provider="google_workspace",
         status=integration.get("status", "not_connected") if integration else "not_connected",
@@ -44,7 +50,7 @@ def _google_integration_out(workspace_id: int, integration) -> schemas.Integrati
         scopes=str(integration.get("scope") or "").split() if integration else [],
         connected_at=integration.get("connected_at") if integration else None,
         expires_at=integration.get("expires_at") if integration else None,
-        metadata=(integration.get("metadata") if integration else None) or {"meet": "available", "drive": "available"},
+        metadata={**((integration.get("metadata") if integration else None) or {}), **metadata},
     )
 
 
@@ -141,7 +147,7 @@ def google_oauth_callback(code: str | None = None, state: str | None = None, err
         "refresh_token": tokens.refresh_token or (existing.get("refresh_token") if existing else None),
         "expires_at": tokens.expires_at,
         "scope": tokens.scope or " ".join(GOOGLE_SCOPES),
-        "metadata": {"meet": "available", "drive": "available"},
+        "metadata": {"meet": "available", "drive": "available", "gmail": "available"},
         "connected_at": existing.get("connected_at") if existing else datetime.utcnow(),
         "updated_at": datetime.utcnow(),
     }
