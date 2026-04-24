@@ -22,6 +22,7 @@ export type QuorumWorkspace = {
 };
 
 const SESSION_KEY = "quorum_session";
+const LAST_WORKSPACE_KEY = "quorum_last_workspace";
 
 export function saveSession(session: QuorumSession) {
   if (typeof window === "undefined") {
@@ -29,6 +30,9 @@ export function saveSession(session: QuorumSession) {
   }
 
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  if (session.workspace_slug) {
+    window.localStorage.setItem(LAST_WORKSPACE_KEY, session.workspace_slug);
+  }
 }
 
 export function readSession(): QuorumSession | null {
@@ -59,4 +63,12 @@ export function clearSession() {
 
 export function readAccessToken(): string | null {
   return readSession()?.access_token || null;
+}
+
+export function readLastWorkspaceSlug(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.localStorage.getItem(LAST_WORKSPACE_KEY) || "";
 }

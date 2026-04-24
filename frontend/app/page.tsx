@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import BrandWordmark from "@/components/brand-wordmark";
 import ThemeToggle from "@/components/theme-toggle";
 
 const valueCards = [
@@ -123,8 +124,7 @@ export default function HomePage() {
       <nav className="stitch-nav">
         <div className="stitch-nav-inner">
           <Link href="/" className="stitch-logo" aria-label="Quorum home">
-            <img className="theme-logo-light" src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
-            <img className="theme-logo-dark" src="/brand/quorum-wordmark-dark.svg" alt="Quorum" />
+            <BrandWordmark />
           </Link>
           <div className="stitch-links">
             <a href="#features">Features</a>
@@ -353,8 +353,7 @@ export default function HomePage() {
 
       <footer className="stitch-footer">
         <div>
-          <img className="footer-logo theme-logo-light" src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
-          <img className="footer-logo theme-logo-dark" src="/brand/quorum-wordmark-dark.svg" alt="Quorum" />
+          <BrandWordmark className="footer-logo" />
           <p>© 2026 Quorum Student Systems. Empowering student leadership.</p>
         </div>
         <div>

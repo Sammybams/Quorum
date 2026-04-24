@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import BrandWordmark from "@/components/brand-wordmark";
 import { getCampaignBySlug } from "@/lib/api/campaigns";
 import { DonationForm } from "./donation-form";
 
@@ -40,7 +41,7 @@ export default async function DonatePage({ params }: { params: { campaignSlug: s
   return (
     <main className="donation-page">
       <nav className="donation-nav">
-        <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
+        <BrandWordmark />
         <span>{campaign.workspace.name}</span>
       </nav>
 

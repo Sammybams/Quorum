@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import BrandWordmark from "@/components/brand-wordmark";
 import { apiPost } from "@/lib/api";
 import { saveSession, type QuorumSession } from "@/lib/session";
 
@@ -105,7 +106,7 @@ export default function RegisterPage() {
       <main className="signup-screen">
         <header className="signup-top">
           <Link className="wordmark" href="/">
-            <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
+            <BrandWordmark />
           </Link>
           <Link href="/login" className="subtle-link">
             Sign in
@@ -152,7 +153,7 @@ export default function RegisterPage() {
     <main className="signup-screen">
       <header className="signup-top">
         <Link className="wordmark" href="/">
-          <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
+          <BrandWordmark />
         </Link>
         <Link href="/login" className="subtle-link">
           Sign in

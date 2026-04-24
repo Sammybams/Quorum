@@ -2,18 +2,46 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
+import BrandWordmark from "@/components/brand-wordmark";
 import { apiPost } from "@/lib/api";
-import { saveSession, type QuorumSession, type QuorumWorkspace } from "@/lib/session";
+import { readLastWorkspaceSlug, saveSession, type QuorumSession, type QuorumWorkspace } from "@/lib/session";
+
+function sortWorkspaces(workspaces: QuorumWorkspace[], preferredSlug: string) {
+  const noisyTokens = ["test", "demo", "sample", "http", "sandbox"];
+  return [...workspaces].sort((left, right) => {
+    const leftSlug = left.workspace_slug.toLowerCase();
+    const rightSlug = right.workspace_slug.toLowerCase();
+    const leftPreferred = leftSlug === preferredSlug ? 0 : 1;
+    const rightPreferred = rightSlug === preferredSlug ? 0 : 1;
+    if (leftPreferred !== rightPreferred) {
+      return leftPreferred - rightPreferred;
+    }
+    const leftNoisy = noisyTokens.some((token) => leftSlug.includes(token)) ? 1 : 0;
+    const rightNoisy = noisyTokens.some((token) => rightSlug.includes(token)) ? 1 : 0;
+    if (leftNoisy !== rightNoisy) {
+      return leftNoisy - rightNoisy;
+    }
+    return left.workspace_name.localeCompare(right.workspace_name);
+  });
+}
 
 export default function LoginPage() {
   const router = useRouter();
+  const [lastWorkspaceSlug, setLastWorkspaceSlug] = useState("");
+  const [workspaceSlug, setWorkspaceSlug] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pendingSession, setPendingSession] = useState<QuorumSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const remembered = readLastWorkspaceSlug();
+    setLastWorkspaceSlug(remembered);
+    setWorkspaceSlug((current) => current || remembered);
+  }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,6 +52,7 @@ export default function LoginPage() {
       const result = await apiPost<QuorumSession, { workspace_slug?: string; email: string; password: string }>(
         "/auth/login",
         {
+          workspace_slug: workspaceSlug.trim() || undefined,
           email: email.trim().toLowerCase(),
           password,
         },
@@ -38,6 +67,21 @@ export default function LoginPage() {
       setPendingSession(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function enterDemoWorkspace() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const session = await apiPost<QuorumSession, Record<string, never>>("/auth/demo-login", {});
+      saveSession(session);
+      router.push(`/${session.workspace_slug}/dashboard`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to open the demo workspace.");
     } finally {
       setLoading(false);
     }
@@ -63,7 +107,7 @@ export default function LoginPage() {
     <main className="auth-screen">
       <section className="auth-visual">
         <Link className="wordmark" href="/">
-          <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
+          <BrandWordmark />
         </Link>
         <div className="auth-product-preview" aria-hidden="true">
           <div className="auth-preview-topline">
@@ -126,7 +170,7 @@ export default function LoginPage() {
 
           {pendingSession ? (
             <div className="workspace-select-list">
-              {pendingSession.workspaces?.map((workspace) => (
+              {sortWorkspaces(pendingSession.workspaces || [], workspaceSlug || lastWorkspaceSlug).map((workspace) => (
                 <button
                   key={workspace.workspace_slug}
                   type="button"
@@ -148,6 +192,21 @@ export default function LoginPage() {
             </div>
           ) : (
             <form onSubmit={onSubmit} className="form-stack">
+              <label>
+                Workspace slug
+                <span className="input-shell">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    domain
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="e.g. mlsa-unilag"
+                    value={workspaceSlug}
+                    onChange={(event) => setWorkspaceSlug(event.target.value)}
+                  />
+                </span>
+              </label>
+
               <label>
                 Email or matric number
                 <span className="input-shell">
@@ -188,6 +247,9 @@ export default function LoginPage() {
 
               <button className="btn-primary wide" type="submit" disabled={loading}>
                 {loading ? "Signing in..." : "Sign in"}
+              </button>
+              <button className="btn-secondary wide" type="button" onClick={enterDemoWorkspace} disabled={loading}>
+                {loading ? "Opening..." : "Explore demo workspace"}
               </button>
             </form>
           )}

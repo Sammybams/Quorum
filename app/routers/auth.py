@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -5,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from ..email import send_password_reset_email, send_verification_email
 from .. import models, schemas
 from ..database import MongoStore, get_db
+from ..demo_seed import ensure_demo_workspace
 from ..membership import sync_workspace_members_from_legacy
 from ..rbac import ensure_default_roles, get_current_user, hydrate_user
 from ..security import (
@@ -18,6 +20,7 @@ from ..security import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+NOISY_WORKSPACE_MARKERS = ("test", "demo", "sample", "http", "sandbox")
 
 
 def _auth_response(db: MongoStore, workspace: models.Workspace, membership: models.WorkspaceMember) -> schemas.AuthLoginResponse:
@@ -48,6 +51,34 @@ def _workspace_member_out(membership: models.WorkspaceMember) -> schemas.AuthMeW
         role_key=membership.role.key,
         permissions=membership.role.permissions,
     )
+
+
+def _membership_sort_key(membership: models.WorkspaceMember) -> tuple[int, str]:
+    workspace = membership.get("workspace")
+    name = workspace.name.lower() if workspace else ""
+    slug = workspace.slug.lower() if workspace else ""
+    noisy = 1 if any(marker in f"{name} {slug}" for marker in NOISY_WORKSPACE_MARKERS) else 0
+    return noisy, name
+
+
+def _load_memberships(db: MongoStore, user_id: int) -> list[models.WorkspaceMember]:
+    memberships = db.find_many("workspace_members", {"user_id": user_id, "status": "active"})
+    for membership in memberships:
+        membership.workspace = db.find_by_id("workspaces", membership.workspace_id)
+        membership.role = db.find_by_id("roles", membership.role_id)
+    memberships = [membership for membership in memberships if membership.workspace and membership.role]
+    return sorted(memberships, key=_membership_sort_key)
+
+
+def _sync_memberships_for_email(db: MongoStore, email: str) -> None:
+    legacy_members = db.find_many("members", {"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}})
+    workspace_ids = {member.workspace_id for member in legacy_members if member.get("workspace_id")}
+    for workspace_id in workspace_ids:
+        workspace = db.find_by_id("workspaces", workspace_id)
+        if not workspace:
+            continue
+        ensure_default_roles(db, workspace.id)
+        sync_workspace_members_from_legacy(db, workspace)
 
 
 def _issue_session_tokens(
@@ -189,17 +220,15 @@ def login(payload: schemas.AuthLoginRequest, db: MongoStore = Depends(get_db)):
         user["password_hash"] = hash_password(password)
         db.save("users", user)
 
-    for workspace in db.find_many("workspaces"):
-        ensure_default_roles(db, workspace.id)
-        sync_workspace_members_from_legacy(db, workspace)
-
-    memberships = db.find_many("workspace_members", {"user_id": user.id, "status": "active"})
-    for membership in memberships:
-        membership.workspace = db.find_by_id("workspaces", membership.workspace_id)
-        membership.role = db.find_by_id("roles", membership.role_id)
+    memberships = _load_memberships(db, user.id)
     if workspace_slug:
-        memberships = [membership for membership in memberships if membership.workspace and membership.workspace.slug == workspace_slug]
-    memberships = sorted(memberships, key=lambda item: item.workspace.name if item.workspace else "")
+        memberships = [membership for membership in memberships if membership.workspace.slug == workspace_slug]
+
+    if not memberships:
+        _sync_memberships_for_email(db, email)
+        memberships = _load_memberships(db, user.id)
+        if workspace_slug:
+            memberships = [membership for membership in memberships if membership.workspace.slug == workspace_slug]
 
     if not memberships:
         raise HTTPException(status_code=401, detail="No active workspace membership found")
@@ -221,6 +250,12 @@ def login(payload: schemas.AuthLoginRequest, db: MongoStore = Depends(get_db)):
         refresh_token=refresh_token,
         workspaces=[_workspace_member_out(membership) for membership in memberships],
     )
+
+
+@router.post("/demo-login", response_model=schemas.AuthLoginResponse)
+def demo_login(db: MongoStore = Depends(get_db)):
+    workspace, membership = ensure_demo_workspace(db)
+    return _auth_response(db, workspace, membership)
 
 
 @router.get("/me", response_model=schemas.AuthMeResponse)
