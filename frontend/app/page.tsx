@@ -1,39 +1,104 @@
 import Link from "next/link";
 
+import ThemeToggle from "@/components/theme-toggle";
+
 const valueCards = [
   {
-    title: "For excos",
-    text: "One dashboard to manage dues, events, meetings, campaigns, and member communication.",
+    title: "Leadership ops",
+    text: "One workspace for member records, meetings, events, finances, and announcements.",
   },
   {
-    title: "For members",
-    text: "Clear visibility into dues status, events, announcements, and fundraising progress.",
+    title: "Member clarity",
+    text: "Give members a clean view of dues, notices, RSVP links, and fundraising progress.",
   },
   {
-    title: "For student bodies",
-    text: "A branded portal and short links that instantly upgrade your public presence.",
+    title: "Finance control",
+    text: "Track dues, campaign inflows, budgets, receipts, and reporting without spreadsheet drift.",
   },
   {
-    title: "For competitions",
-    text: "AI receipt verification reduces treasurer workload and increases trust.",
+    title: "AI assistance",
+    text: "Use Claude to turn transcripts into minutes and action items that leaders can actually work from.",
   },
 ];
 
 const pricingPlans = [
   {
     name: "Starter",
+    accent: "neutral",
     price: "Free",
-    text: "For small student bodies setting up structure, member records, and announcements.",
+    cadence: "forever",
+    seats: "Up to 3 admin seats",
+    ai: "20 AI receipt verifications/month",
+    features: [
+      "Member registry",
+      "Dues tracker with receipt upload",
+      "Event creator with shareable links",
+      "Announcements board",
+      "1 active fundraising campaign",
+    ],
   },
   {
-    name: "Operations",
-    price: "Demo-ready",
-    text: "Adds dues, events, meetings, campaigns, and public portal workflows in one workspace.",
+    name: "Growth",
+    accent: "blue",
+    price: "₦8,000",
+    cadence: "/month · ₦86,400/year",
+    seats: "Up to 10 admin seats",
+    ai: "100 AI verifications/month + minutes assistant",
+    features: [
+      "Everything in Starter",
+      "Meetings module (agenda, quorum, minutes)",
+      "Budget planner",
+      "Events analytics dashboard",
+      "Short link click analytics",
+    ],
   },
   {
-    name: "Scale",
-    price: "Custom",
-    text: "For larger unions and umbrella bodies that need integrations, AI workflows, and governance controls.",
+    name: "Pro",
+    accent: "violet",
+    price: "₦20,000",
+    cadence: "/month · ₦216,000/year",
+    seats: "Up to 25 admin seats",
+    ai: "500 AI verifications/month + analytics reports",
+    features: [
+      "Everything in Growth",
+      "Custom domain for portal page",
+      "White-label branding",
+      "AI-generated analytics reports",
+      "Custom role builder",
+    ],
+  },
+];
+
+const workflowCards = [
+  {
+    title: "Fundraising cockpit",
+    eyebrow: "Campaigns",
+    stats: [
+      { label: "Raised", value: "₦742k" },
+      { label: "Goal", value: "₦1.2m" },
+      { label: "Sponsors", value: "48" },
+    ],
+    items: ["Track streams and donation links", "Review contribution ledger", "Monitor campaign pace in real time"],
+  },
+  {
+    title: "Meetings to minutes",
+    eyebrow: "Meetings",
+    stats: [
+      { label: "Agenda items", value: "8" },
+      { label: "Attendees", value: "14" },
+      { label: "Actions", value: "6" },
+    ],
+    items: ["Create agenda and quorum flow", "Sync transcript from integrations", "Publish Claude-generated minutes"],
+  },
+  {
+    title: "Member operations",
+    eyebrow: "Members",
+    stats: [
+      { label: "Active", value: "326" },
+      { label: "Pending", value: "24" },
+      { label: "Paid dues", value: "71%" },
+    ],
+    items: ["Invite officers from Gmail", "Track status and role ownership", "See dues and attendance health"],
   },
 ];
 
@@ -57,8 +122,9 @@ export default function HomePage() {
     <main className="stitch-landing">
       <nav className="stitch-nav">
         <div className="stitch-nav-inner">
-          <Link href="/" className="stitch-logo">
-            <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
+          <Link href="/" className="stitch-logo" aria-label="Quorum home">
+            <img className="theme-logo-light" src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
+            <img className="theme-logo-dark" src="/brand/quorum-wordmark-dark.svg" alt="Quorum" />
           </Link>
           <div className="stitch-links">
             <a href="#features">Features</a>
@@ -67,6 +133,7 @@ export default function HomePage() {
             <a href="#resources">Resources</a>
           </div>
           <div className="stitch-actions">
+            <ThemeToggle />
             <Link href="/login" className="stitch-login">
               Login
             </Link>
@@ -79,45 +146,105 @@ export default function HomePage() {
 
       <header className="stitch-hero stitch-section" id="features">
         <div>
+          <p className="stitch-badge">Student body operating system</p>
           <h1>
             Where student bodies <span>get things done.</span>
           </h1>
           <p>
-            The premium platform for university leadership governance, seamless verification, and unified
-            communication.
+            Run members, meetings, dues, budgets, campaigns, links, and announcements from one structured workspace
+            designed for campus leadership teams.
           </p>
           <div className="stitch-hero-ctas">
             <Link href="/register" className="stitch-hero-primary">
-              Join Quorum
+              Start a workspace
             </Link>
-            <a href="#solutions" className="stitch-hero-secondary">
-              Book a Demo
+            <a href="#pricing" className="stitch-hero-secondary">
+              View pricing
             </a>
           </div>
         </div>
         <div className="stitch-hero-art">
-          <div className="stitch-hero-preview">
-            <h3>Student Ops Overview</h3>
-            <p>Unified panel for dues, events, campaigns, and communications.</p>
-            <div className="stitch-bars">
-              <span style={{ height: "45%" }} />
-              <span style={{ height: "63%" }} />
-              <span style={{ height: "78%" }} />
-              <span style={{ height: "96%" }} />
-              <span style={{ height: "70%" }} />
+          <article className="stitch-app-window">
+            <header className="stitch-app-window-top">
+              <div>
+                <strong>Quorum workspace</strong>
+                <span>Microsoft Learn Student Ambassadors Unilag</span>
+              </div>
+              <div className="stitch-window-dots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
+            </header>
+            <div className="stitch-app-window-body">
+              <aside className="stitch-app-nav">
+                <span className="active">Dashboard</span>
+                <span>Members</span>
+                <span>Meetings</span>
+                <span>Campaigns</span>
+                <span>Budgets</span>
+              </aside>
+              <div className="stitch-app-main">
+                <div className="stitch-app-stats">
+                  <article>
+                    <small>Members</small>
+                    <strong>326</strong>
+                  </article>
+                  <article>
+                    <small>Paid dues</small>
+                    <strong>71%</strong>
+                  </article>
+                  <article>
+                    <small>Open actions</small>
+                    <strong>12</strong>
+                  </article>
+                </div>
+                <div className="stitch-app-panels">
+                  <article className="stitch-app-panel">
+                    <div className="stitch-app-panel-head">
+                      <strong>Campaign progress</strong>
+                      <span>₦742k / ₦1.2m</span>
+                    </div>
+                    <div className="stitch-progress-track">
+                      <span style={{ width: "62%" }} />
+                    </div>
+                    <ul>
+                      <li>Donations link active</li>
+                      <li>3 funding streams attached</li>
+                      <li>48 confirmed contributors</li>
+                    </ul>
+                  </article>
+                  <article className="stitch-app-panel">
+                    <div className="stitch-app-panel-head">
+                      <strong>Minutes assistant</strong>
+                      <span>Claude ready</span>
+                    </div>
+                    <div className="stitch-mini-chart">
+                      <span style={{ height: "36%" }} />
+                      <span style={{ height: "56%" }} />
+                      <span style={{ height: "74%" }} />
+                      <span style={{ height: "100%" }} />
+                      <span style={{ height: "68%" }} />
+                    </div>
+                    <ul>
+                      <li>Transcript synced</li>
+                      <li>6 action items extracted</li>
+                      <li>Minutes published to officers</li>
+                    </ul>
+                  </article>
+                </div>
+              </div>
             </div>
-            <small>+42% engagement</small>
-          </div>
+          </article>
         </div>
       </header>
 
       <section className="stitch-values stitch-section" id="solutions">
         <div className="stitch-intro">
-          <h2>
-            Designed for impact, not administration.
-          </h2>
+          <h2>Designed for impact, not admin clutter.</h2>
           <p>
-            Step away from spreadsheets. Experience a curated toolkit that treats student management as an art form.
+            Quorum brings CRM-like structure to student leadership: cleaner workflows, clearer permissions, and
+            better visibility across the whole body.
           </p>
         </div>
 
@@ -131,54 +258,71 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="stitch-showcase stitch-section">
+        <div className="stitch-intro">
+          <p className="eyebrow">Inside the product</p>
+          <h2>Actual operational views, not generic marketing blocks.</h2>
+          <p>
+            Show judges exactly how the workspace feels: fundraising visibility, meeting intelligence, and member
+            administration in one system.
+          </p>
+        </div>
+        <div className="stitch-showcase-grid">
+          {workflowCards.map((card) => (
+            <article key={card.title} className="stitch-preview-card">
+              <div className="stitch-preview-top">
+                <p className="eyebrow">{card.eyebrow}</p>
+                <h3>{card.title}</h3>
+              </div>
+              <div className="stitch-preview-stats">
+                {card.stats.map((stat) => (
+                  <div key={stat.label}>
+                    <small>{stat.label}</small>
+                    <strong>{stat.value}</strong>
+                  </div>
+                ))}
+              </div>
+              <ul className="stitch-preview-list">
+                {card.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="stitch-pricing stitch-section" id="pricing">
         <div className="stitch-intro">
-          <h2>Pricing that grows with the body.</h2>
+          <p className="eyebrow">Business model</p>
+          <h2>Role-based tiered pricing. Designed for student budgets.</h2>
           <p>
-            Start clean for a demo, then scale into a full operating system as your leadership processes mature.
+            Every workspace has a Super Admin, Subteam Leads, and Core Members. Pricing scales with team size, not
+            with the wider membership.
           </p>
         </div>
         <div className="stitch-pricing-grid">
           {pricingPlans.map((plan) => (
-            <article key={plan.name} className="stitch-pricing-card">
-              <p className="eyebrow">{plan.name}</p>
+            <article key={plan.name} className={`stitch-pricing-card ${plan.accent}`}>
+              <div className="stitch-pricing-band" aria-hidden="true" />
+              <p className="stitch-plan-name">{plan.name}</p>
               <h3>{plan.price}</h3>
-              <p>{plan.text}</p>
+              <p className="stitch-plan-cadence">{plan.cadence}</p>
+              <div className="stitch-plan-summary">
+                <strong>{plan.seats}</strong>
+                <p>{plan.ai}</p>
+              </div>
+              <ul className="stitch-plan-features">
+                {plan.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
             </article>
           ))}
         </div>
-
-        <div className="stitch-bento">
-          <article className="stitch-bento-large">
-            <h3>AI Receipt Verification</h3>
-            <p>Automate financial governance. Scan and validate receipts against expected values instantly.</p>
-            <div className="stitch-chip">Receipt #8924 Verified</div>
-          </article>
-
-          <article className="stitch-bento-blue">
-            <h3>Smart Link Shortener</h3>
-            <p>Create custom, trackable links for every initiative.</p>
-          </article>
-
-          <article className="stitch-bento-card">
-            <h3>Integrated Budgeting</h3>
-            <p>Ledger updates connected to campaigns and events in real-time.</p>
-          </article>
-
-          <article className="stitch-bento-wide">
-            <div>
-              <h3>Editorial Analytics</h3>
-              <p>See your session story clearly with engagement and participation trends.</p>
-            </div>
-            <div className="stitch-mini-chart">
-              <span style={{ height: "36%" }} />
-              <span style={{ height: "56%" }} />
-              <span style={{ height: "74%" }} />
-              <span style={{ height: "100%" }} />
-              <span style={{ height: "68%" }} />
-            </div>
-          </article>
-        </div>
+        <p className="stitch-pricing-note">
+          Additional AI credits available: ₦1,500 / 50 credits · ₦4,500 / 200 credits · ₦9,000 / 500 credits
+        </p>
       </section>
 
       <section className="stitch-proof stitch-section" id="resources">
@@ -209,7 +353,8 @@ export default function HomePage() {
 
       <footer className="stitch-footer">
         <div>
-          <img className="footer-logo" src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
+          <img className="footer-logo theme-logo-light" src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
+          <img className="footer-logo theme-logo-dark" src="/brand/quorum-wordmark-dark.svg" alt="Quorum" />
           <p>© 2026 Quorum Student Systems. Empowering student leadership.</p>
         </div>
         <div>

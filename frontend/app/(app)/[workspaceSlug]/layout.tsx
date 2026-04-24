@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import ThemeToggle from "@/components/theme-toggle";
 import { apiPost } from "@/lib/api";
 import { clearSession, readSession, saveSession, type QuorumSession, type QuorumWorkspace } from "@/lib/session";
 
@@ -231,6 +232,7 @@ export default function WorkspaceLayout({
             ) : null}
           </div>
           <div className="topbar-actions">
+            <ThemeToggle compact />
             <button type="button" className="icon-button" aria-label="Notifications">
               <span className="material-symbols-outlined" aria-hidden="true">
                 notifications
