@@ -21,6 +21,7 @@ const permissionGroups: Array<[string, string[]]> = [
   ["Events", ["events.view", "events.manage", "events.attendance"]],
   ["Meetings", ["meetings.view", "meetings.manage", "meetings.publish_minutes"]],
   ["Campaigns", ["campaigns.view", "campaigns.manage", "campaigns.confirm_contribution"]],
+  ["Reports", ["reports.view", "reports.generate"]],
   ["Platform", ["dashboard.view", "settings.view", "settings.edit", "roles.manage", "integrations.manage", "billing.manage"]],
 ];
 

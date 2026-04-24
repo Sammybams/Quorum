@@ -83,6 +83,7 @@ class MongoStore:
         "link_clicks": "engagement",
         "tasks": "engagement",
         "notifications": "engagement",
+        "reports": "engagement",
         "counters": "platform",
     }
 
@@ -117,6 +118,7 @@ class MongoStore:
         "announcements",
         "tasks",
         "notifications",
+        "reports",
         "counters",
     ]
 
@@ -166,6 +168,8 @@ class MongoStore:
         self.collection("link_clicks").create_index([("workspace_id", ASCENDING), ("clicked_at", DESCENDING)])
         self.collection("tasks").create_index([("workspace_id", ASCENDING), ("assigned_to_member_id", ASCENDING), ("status", ASCENDING)])
         self.collection("notifications").create_index([("workspace_id", ASCENDING), ("user_id", ASCENDING), ("created_at", DESCENDING)])
+        self.collection("reports").create_index([("workspace_id", ASCENDING), ("created_at", DESCENDING)])
+        self.collection("reports").create_index([("workspace_id", ASCENDING), ("status", ASCENDING)])
 
     def next_id(self, collection_name: str) -> int:
         max_existing_doc = self.collection(collection_name).find_one(sort=[("id", DESCENDING)])

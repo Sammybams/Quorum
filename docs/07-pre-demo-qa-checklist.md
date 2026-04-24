@@ -15,7 +15,6 @@
 
 ## Auth
 - [ ] Standard sign-in works
-- [ ] Workspace slug field routes into the right workspace
 - [ ] Demo login opens the seeded demo workspace
 - [ ] Forgot-password and verify-email screens still load
 
@@ -34,11 +33,13 @@
 - [ ] Budgets page has at least one budget with lines
 - [ ] Announcements page has published updates
 - [ ] Links page has tracked short links
+- [ ] Reports page has at least one completed audit report
 
 ## Integrations / AI
 - [ ] Google integrations page loads
 - [ ] Gmail invitation flow is visible
 - [ ] Meeting AI minutes page renders without errors
+- [ ] Analytics report page renders scorecard, summary, and recommendations
 
 ## Final Demo Hygiene
 - [ ] Browser is already signed into the correct environment

@@ -564,6 +564,7 @@ class DashboardCounts(BaseModel):
     events: int
     campaigns: int
     links: int
+    reports: int = 0
     paid_members: int
     pending_members: int
     tasks: int = 0
@@ -578,6 +579,96 @@ class RecentActivityItem(BaseModel):
     created_at: datetime
 
 
+class ReportMetricOut(BaseModel):
+    metric_key: str
+    label: str
+    actual_value: str
+    target_value: str | None = None
+    met_target: bool | None = None
+    score: float | None = None
+    status: str
+    operator: str | None = None
+    raw_actual: float | None = None
+    raw_target: float | None = None
+
+
+class ReportCategorySnapshotOut(BaseModel):
+    category_key: str
+    title: str
+    weight: float
+    category_score: float
+    metrics: list[ReportMetricOut] = Field(default_factory=list)
+
+
+class ReportCategoryNarrativeOut(BaseModel):
+    category_key: str
+    title: str
+    headline_verdict: str
+    went_well: list[str] = Field(default_factory=list)
+    underperformed: list[str] = Field(default_factory=list)
+    watch_out_flag: str | None = None
+
+
+class ReportRecommendationOut(BaseModel):
+    data_finding: str
+    action: str
+    expected_outcome: str
+    priority: str
+    responsible_role: str
+
+
+class ReportNarrativeOut(BaseModel):
+    executive_summary: list[str] = Field(default_factory=list)
+    period_highlights: list[str] = Field(default_factory=list)
+    categories: list[ReportCategoryNarrativeOut] = Field(default_factory=list)
+    recommendations: list[ReportRecommendationOut] = Field(default_factory=list)
+    handover_note: list[str] = Field(default_factory=list)
+
+
+class ReportSummaryOut(BaseModel):
+    id: int
+    workspace_id: int
+    title: str
+    period_start: str
+    period_end: str
+    period_label: str | None = None
+    status: str
+    overall_score: float | None = None
+    overall_grade: str | None = None
+    generated_at: datetime | None = None
+    pdf_url: str | None = None
+    created_at: datetime
+
+
+class ReportDetailOut(ReportSummaryOut):
+    enabled_categories: list[str] = Field(default_factory=list)
+    context_notes: str | None = None
+    generation_error: str | None = None
+    data_snapshot: list[ReportCategorySnapshotOut] = Field(default_factory=list)
+    ai_narrative: ReportNarrativeOut | None = None
+
+
+class ReportGenerateRequest(BaseModel):
+    title: str = Field(min_length=4, max_length=180)
+    period_start: str
+    period_end: str
+    period_label: str | None = None
+    enabled_categories: list[str] = Field(
+        default_factory=lambda: ["membership", "dues", "events", "meetings", "fundraising", "communication", "ai_usage"]
+    )
+    context_notes: str | None = None
+
+
+class WorkspaceLatestReport(BaseModel):
+    id: int
+    title: str
+    period_label: str | None = None
+    status: str
+    overall_score: float | None = None
+    overall_grade: str | None = None
+    generated_at: datetime | None = None
+
+
 class WorkspaceOverview(BaseModel):
     workspace: WorkspaceOut
     counts: DashboardCounts
@@ -587,6 +678,7 @@ class WorkspaceOverview(BaseModel):
     links: list[LinkOut]
     announcements: list[AnnouncementOut]
     recent_activity: list[RecentActivityItem] = Field(default_factory=list)
+    latest_report: WorkspaceLatestReport | None = None
 
 
 class TaskCreate(BaseModel):

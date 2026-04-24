@@ -68,6 +68,17 @@ def get_workspace_overview(slug: str, db: MongoStore = Depends(get_db)):
                 created_at=announcement.created_at,
             )
         )
+    latest_report = db.find_many("reports", {"workspace_id": workspace.id}, sort=[("created_at", DESC)], limit=1)
+    if latest_report:
+        report = latest_report[0]
+        recent_activity.append(
+            schemas.RecentActivityItem(
+                type="report",
+                title=report.title,
+                description=f"{report.get('overall_grade') or report.get('status', 'pending').title()} report",
+                created_at=report.get("generated_at") or report.created_at,
+            )
+        )
     recent_activity = sorted(recent_activity, key=lambda item: item.created_at, reverse=True)[:6]
 
     return schemas.WorkspaceOverview(
@@ -78,6 +89,7 @@ def get_workspace_overview(slug: str, db: MongoStore = Depends(get_db)):
             events=db.count("events", {"workspace_id": workspace.id}),
             campaigns=db.count("campaigns", {"workspace_id": workspace.id}),
             links=db.count("short_links", {"workspace_id": workspace.id}),
+            reports=db.count("reports", {"workspace_id": workspace.id}),
             paid_members=paid_members,
             pending_members=max(member_count - paid_members, 0),
             tasks=db.count("tasks", {"workspace_id": workspace.id}),
@@ -95,6 +107,17 @@ def get_workspace_overview(slug: str, db: MongoStore = Depends(get_db)):
             limit=4,
         ),
         recent_activity=recent_activity,
+        latest_report=schemas.WorkspaceLatestReport(
+            id=latest_report[0].id,
+            title=latest_report[0].title,
+            period_label=latest_report[0].get("period_label"),
+            status=latest_report[0].get("status", "pending"),
+            overall_score=latest_report[0].get("overall_score"),
+            overall_grade=latest_report[0].get("overall_grade"),
+            generated_at=latest_report[0].get("generated_at"),
+        )
+        if latest_report
+        else None,
     )
 
 

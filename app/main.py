@@ -17,6 +17,7 @@ from .routers import (
     meetings,
     members,
     public,
+    reports,
     roles,
     tasks,
     webhooks,
@@ -62,6 +63,7 @@ app.include_router(announcements.router, prefix=api_prefix)
 app.include_router(tasks.router, prefix=api_prefix)
 app.include_router(meetings.router, prefix=api_prefix)
 app.include_router(budgets.router, prefix=api_prefix)
+app.include_router(reports.router, prefix=api_prefix)
 app.include_router(public.router, prefix=api_prefix)
 app.include_router(webhooks.router, prefix=api_prefix)
 

@@ -26,6 +26,8 @@ OWNER_PERMISSIONS = [
     "campaigns.view",
     "campaigns.manage",
     "campaigns.confirm_contribution",
+    "reports.view",
+    "reports.generate",
     "budgets.view",
     "budgets.manage",
     "announcements.view",
@@ -50,6 +52,8 @@ SECRETARY_PERMISSIONS = [
     "tasks.view",
     "tasks.assign",
     "campaigns.view",
+    "reports.view",
+    "reports.generate",
     "budgets.view",
     "announcements.view",
     "announcements.publish",
@@ -64,6 +68,7 @@ CORE_MEMBER_PERMISSIONS = [
     "meetings.view",
     "tasks.view",
     "campaigns.view",
+    "reports.view",
     "announcements.view",
 ]
 
@@ -150,6 +155,7 @@ def require_workspace_permission(permission: str):
         user: models.User = Depends(get_current_user),
         db: MongoStore = Depends(get_db),
     ) -> models.WorkspaceMember:
+        ensure_default_roles(db, workspace_id)
         membership = db.find_one("workspace_members", {"workspace_id": workspace_id, "user_id": user.id, "status": "active"})
         if not membership:
             raise HTTPException(status_code=403, detail="Insufficient permission")

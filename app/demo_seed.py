@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from . import models
 from .database import MongoStore
 from .rbac import ensure_default_roles
+from .services.reports import compile_report_snapshot, fallback_report_narrative
 
 
 DEMO_WORKSPACE_SLUG = "engineering-faculty-council-demo"
@@ -523,6 +524,46 @@ def _seed_budgets(db: MongoStore, workspace: models.Workspace) -> None:
             )
 
 
+def _seed_reports(db: MongoStore, workspace: models.Workspace, owner_membership: models.WorkspaceMember) -> None:
+    if db.find_many("reports", {"workspace_id": workspace.id}, limit=1):
+        return
+
+    period_start = datetime(2026, 1, 1).date()
+    period_end = datetime(2026, 5, 31).date()
+    snapshot = compile_report_snapshot(
+        db,
+        workspace=workspace,
+        period_start=period_start,
+        period_end=period_end,
+        enabled_categories=["membership", "dues", "events", "meetings", "fundraising", "communication", "ai_usage"],
+    )
+    narrative = fallback_report_narrative(
+        snapshot,
+        "Engineering Faculty Council focused on sponsor mobilisation, dues enforcement, and structured meeting follow-through for Engineering Week delivery.",
+    )
+    db.insert(
+        "reports",
+        {
+            "workspace_id": workspace.id,
+            "title": "Engineering Faculty Council Semester Audit",
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "period_label": "2025/2026 Second Semester",
+            "status": "complete",
+            "generated_by": owner_membership.id,
+            "enabled_categories": ["membership", "dues", "events", "meetings", "fundraising", "communication", "ai_usage"],
+            "context_notes": "Generated for a handover-style review before Engineering Week.",
+            "generated_at": datetime.utcnow() - timedelta(days=1),
+            "pdf_url": None,
+            "ai_narrative": narrative,
+            "data_snapshot": snapshot["categories"],
+            "overall_score": snapshot["overall_score"],
+            "overall_grade": snapshot["overall_grade"],
+            "generation_error": None,
+        },
+    )
+
+
 def ensure_demo_workspace(db: MongoStore) -> tuple[models.Workspace, models.WorkspaceMember]:
     workspace = _ensure_workspace(db)
     owner_membership, memberships = _seed_members(db, workspace)
@@ -533,4 +574,5 @@ def ensure_demo_workspace(db: MongoStore) -> tuple[models.Workspace, models.Work
     _seed_announcements(db, workspace)
     _seed_meetings_and_tasks(db, workspace, memberships)
     _seed_budgets(db, workspace)
+    _seed_reports(db, workspace, owner_membership)
     return workspace, owner_membership

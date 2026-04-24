@@ -11,6 +11,7 @@ type Overview = {
     events: number;
     campaigns: number;
     links: number;
+    reports: number;
     paid_members: number;
     pending_members: number;
     tasks: number;
@@ -41,6 +42,15 @@ type Overview = {
     description: string;
     created_at: string;
   }>;
+  latest_report?: {
+    id: number;
+    title: string;
+    period_label?: string | null;
+    status: string;
+    overall_score?: number | null;
+    overall_grade?: string | null;
+    generated_at?: string | null;
+  } | null;
 };
 
 export default async function DashboardPage({ params }: { params: { workspaceSlug: string } }) {
@@ -138,6 +148,14 @@ export default async function DashboardPage({ params }: { params: { workspaceSlu
         </article>
         <article className="metric-card">
           <span className="material-symbols-outlined" aria-hidden="true">
+            analytics
+          </span>
+          <small>Reports</small>
+          <strong>{counts.reports}</strong>
+          <p>{overview.latest_report?.overall_grade || "Generate first audit"}</p>
+        </article>
+        <article className="metric-card">
+          <span className="material-symbols-outlined" aria-hidden="true">
             monitoring
           </span>
           <small>Campaign</small>
@@ -216,6 +234,31 @@ export default async function DashboardPage({ params }: { params: { workspaceSlu
                   </div>
                 ))}
               </div>
+            )}
+          </article>
+
+          <article className="panel-card">
+            <div className="card-head compact">
+              <h2>Audit reports</h2>
+              <Link href={`/${workspace.slug}/reports`} className="subtle-link">
+                Open
+              </Link>
+            </div>
+            {overview.latest_report ? (
+              <div className="mini-list">
+                <div>
+                  <span>{overview.latest_report.period_label || "Latest report"}</span>
+                  <strong>{overview.latest_report.title}</strong>
+                </div>
+                <div>
+                  <span>Overall</span>
+                  <strong>
+                    {overview.latest_report.overall_score?.toFixed(1) || "-"} / 10 · {overview.latest_report.overall_grade || overview.latest_report.status}
+                  </strong>
+                </div>
+              </div>
+            ) : (
+              <EmptyBlock icon="analytics" title="No audit report yet" text="Generate an analytics report to review the semester in one document." />
             )}
           </article>
 

@@ -116,6 +116,10 @@ const resourceCards = [
     title: "Treasury workflows",
     text: "Show dues, campaigns, budget lines, contribution records, and exports in one flow.",
   },
+  {
+    title: "AI audit report",
+    text: "Generate an end-of-period report with weighted scoring, executive summary, category verdicts, and handover recommendations.",
+  },
 ];
 
 export default function HomePage() {

@@ -30,3 +30,4 @@ Budget = Doc
 BudgetLine = Doc
 Expenditure = Doc
 Notification = Doc
+Report = Doc

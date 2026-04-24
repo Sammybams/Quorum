@@ -16,6 +16,7 @@
   - members count
   - dues health
   - active campaign
+  - latest audit report
   - recent activity
 - Say: "This is the operating snapshot for the executive council."
 
@@ -47,12 +48,22 @@
 - Show planned vs actual budget lines
 - Say: "This is where treasury operations become visible instead of spreadsheet-driven."
 
-## 5:45 - 6:30 Links and Integrations
+## 5:45 - 6:20 AI Analytics Report
+- Open `Reports`
+- Open the seeded semester audit
+- Call out:
+  - weighted score
+  - executive summary
+  - category scorecard
+  - recommendations for incoming exco
+- Say: "Quorum does not just store records. It interprets the leadership cycle and produces a handover-ready audit report."
+
+## 6:20 - 6:45 Links and Integrations
 - Open `Links`
 - Show short-link tracking
 - Open `Settings > Integrations`
 - Mention Google connection, Gmail invitations, and meeting sync pipeline
 
-## 6:30 - 7:00 Close
+## 6:45 - 7:00 Close
 - Return to `Dashboard`
 - Say: "Quorum gives student leadership teams a structured system for running real operations, not just posting updates."
