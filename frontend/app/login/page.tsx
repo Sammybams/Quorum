@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
 import BrandWordmark from "@/components/brand-wordmark";
+import ThemeToggle from "@/components/theme-toggle";
 import { apiPost } from "@/lib/api";
 import { readLastWorkspaceSlug, saveSession, type QuorumSession, type QuorumWorkspace } from "@/lib/session";
 
@@ -30,7 +31,6 @@ function sortWorkspaces(workspaces: QuorumWorkspace[], preferredSlug: string) {
 export default function LoginPage() {
   const router = useRouter();
   const [lastWorkspaceSlug, setLastWorkspaceSlug] = useState("");
-  const [workspaceSlug, setWorkspaceSlug] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pendingSession, setPendingSession] = useState<QuorumSession | null>(null);
@@ -40,7 +40,6 @@ export default function LoginPage() {
   useEffect(() => {
     const remembered = readLastWorkspaceSlug();
     setLastWorkspaceSlug(remembered);
-    setWorkspaceSlug((current) => current || remembered);
   }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -49,10 +48,9 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const result = await apiPost<QuorumSession, { workspace_slug?: string; email: string; password: string }>(
+      const result = await apiPost<QuorumSession, { email: string; password: string }>(
         "/auth/login",
         {
-          workspace_slug: workspaceSlug.trim() || undefined,
           email: email.trim().toLowerCase(),
           password,
         },
@@ -61,6 +59,21 @@ export default function LoginPage() {
       if (result.workspace_slug) {
         saveSession(result);
         router.push(`/${result.workspace_slug}/dashboard`);
+        return;
+      }
+
+      const preferred = sortWorkspaces(result.workspaces || [], lastWorkspaceSlug)[0];
+      if (preferred && preferred.workspace_slug === lastWorkspaceSlug) {
+        const session: QuorumSession = {
+          ...result,
+          workspace_slug: preferred.workspace_slug,
+          workspace_name: preferred.workspace_name,
+          member_id: preferred.member_id,
+          member_role: preferred.role,
+          role_key: preferred.role_key,
+        };
+        saveSession(session);
+        router.push(`/${preferred.workspace_slug}/dashboard`);
         return;
       }
 
@@ -106,9 +119,12 @@ export default function LoginPage() {
   return (
     <main className="auth-screen">
       <section className="auth-visual">
-        <Link className="wordmark" href="/">
-          <BrandWordmark />
-        </Link>
+        <div className="auth-visual-top">
+          <Link className="wordmark" href="/">
+            <BrandWordmark />
+          </Link>
+          <ThemeToggle compact />
+        </div>
         <div className="auth-product-preview" aria-hidden="true">
           <div className="auth-preview-topline">
             <span>Sample workspace</span>
@@ -159,18 +175,23 @@ export default function LoginPage() {
       <section className="auth-form-area">
         <div className="auth-card">
           <div className="auth-card-head">
-            <p className="eyebrow">Secure access</p>
-            <h2>{pendingSession ? "Choose a workspace" : "Welcome back"}</h2>
-            <p>
-              {pendingSession
-                ? "Your account belongs to multiple communities. Pick where you want to work."
-                : "Sign in once, then choose the workspace you want to manage."}
-            </p>
+            <div className="auth-card-head-top">
+              <div>
+                <p className="eyebrow">Secure access</p>
+                <h2>{pendingSession ? "Choose a workspace" : "Welcome back"}</h2>
+                <p>
+                  {pendingSession
+                    ? "Your account belongs to multiple communities. Pick where you want to work."
+                    : "Sign in once, then choose the workspace you want to manage."}
+                </p>
+              </div>
+              <ThemeToggle compact />
+            </div>
           </div>
 
           {pendingSession ? (
             <div className="workspace-select-list">
-              {sortWorkspaces(pendingSession.workspaces || [], workspaceSlug || lastWorkspaceSlug).map((workspace) => (
+              {sortWorkspaces(pendingSession.workspaces || [], lastWorkspaceSlug).map((workspace) => (
                 <button
                   key={workspace.workspace_slug}
                   type="button"
@@ -192,21 +213,6 @@ export default function LoginPage() {
             </div>
           ) : (
             <form onSubmit={onSubmit} className="form-stack">
-              <label>
-                Workspace slug
-                <span className="input-shell">
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    domain
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="e.g. mlsa-unilag"
-                    value={workspaceSlug}
-                    onChange={(event) => setWorkspaceSlug(event.target.value)}
-                  />
-                </span>
-              </label>
-
               <label>
                 Email or matric number
                 <span className="input-shell">

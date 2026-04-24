@@ -514,6 +514,18 @@ p {
   padding: 56px;
 }
 
+.auth-visual-top,
+.auth-card-head-top {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.auth-visual-top .theme-toggle {
+  flex: 0 0 auto;
+}
+
 .auth-product-preview {
   align-self: center;
   background: var(--surface-glass);
@@ -669,6 +681,11 @@ p {
 .signup-card h2 {
   font-size: 2rem;
   margin-bottom: 8px;
+}
+
+.auth-card-head-top h2,
+.auth-card-head-top p {
+  margin-right: 0;
 }
 
 .auth-footnote {
@@ -3214,6 +3231,11 @@ p {
 
   .auth-visual {
     display: none;
+  }
+
+  .auth-card-head-top {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .auth-form-area {
