@@ -40,6 +40,7 @@
 - [ ] Gmail invitation flow is visible
 - [ ] Meeting AI minutes page renders without errors
 - [ ] Analytics report page renders scorecard, summary, and recommendations
+- [ ] Print / Save PDF opens a clean printable report view
 
 ## Final Demo Hygiene
 - [ ] Browser is already signed into the correct environment

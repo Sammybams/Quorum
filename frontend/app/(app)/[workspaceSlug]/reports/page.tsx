@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { apiGet, apiPost } from "@/lib/api";
@@ -346,9 +347,22 @@ export default function ReportsPage({ params }: { params: { workspaceSlug: strin
                     <h2>{selected.title}</h2>
                     <p>{selected.period_label || `${selected.period_start} to ${selected.period_end}`}</p>
                   </div>
-                  <div className="report-score-chip">
-                    <strong>{selected.overall_score?.toFixed(1) || "-"}</strong>
-                    <span>{selected.overall_grade || selected.status}</span>
+                  <div className="report-hero-actions">
+                    <div className="report-score-chip">
+                      <strong>{selected.overall_score?.toFixed(1) || "-"}</strong>
+                      <span>{selected.overall_grade || selected.status}</span>
+                    </div>
+                    <Link
+                      href={`/report/${params.workspaceSlug}/${selected.id}`}
+                      className="btn-secondary"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        print
+                      </span>
+                      Print / Save PDF
+                    </Link>
                   </div>
                 </div>
 

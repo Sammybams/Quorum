@@ -2903,6 +2903,143 @@ p {
   }
 }
 
+.print-report-shell {
+  margin: 0 auto;
+  max-width: 1120px;
+  padding: 24px;
+}
+
+.print-report-toolbar,
+.print-report-toolbar-actions,
+.print-report-cover,
+.print-two-column {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.print-report-toolbar {
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.print-report-toolbar-actions {
+  justify-content: flex-end;
+}
+
+.print-report-page {
+  background: var(--surface-lowest);
+  border-radius: 28px;
+  display: grid;
+  gap: 20px;
+  padding: 32px;
+}
+
+.print-report-cover {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.print-report-score {
+  background: linear-gradient(135deg, var(--primary-soft), color-mix(in srgb, var(--primary-soft) 60%, transparent));
+  border-radius: 24px;
+  min-width: 150px;
+  padding: 20px;
+  text-align: center;
+}
+
+.print-report-score strong {
+  display: block;
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.print-report-score span {
+  color: var(--text-muted);
+}
+
+.print-block {
+  display: grid;
+  gap: 14px;
+}
+
+.print-section-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.report-score-chip.compact {
+  min-width: 120px;
+  padding: 14px;
+}
+
+.print-two-column {
+  align-items: stretch;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.page-break-soft {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@media print {
+  @page {
+    margin: 14mm 16mm;
+    size: A4;
+  }
+
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-report-shell {
+    max-width: none;
+    padding: 0;
+  }
+
+  .print-report-page {
+    background: #ffffff;
+    border-radius: 0;
+    box-shadow: none;
+    color: #0f172a;
+    padding: 0;
+  }
+
+  .print-report-page p,
+  .print-report-page span,
+  .print-report-page li,
+  .print-report-page td,
+  .print-report-page th {
+    color: #334155;
+  }
+
+  .print-report-cover,
+  .print-section-head {
+    page-break-inside: avoid;
+  }
+
+  .print-two-column {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .report-recommendation-card,
+  .report-category-card,
+  .report-highlight-row span {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
 .stitch-app-window {
   backdrop-filter: blur(18px);
   box-shadow: 0 28px 70px rgba(15, 23, 42, 0.2);

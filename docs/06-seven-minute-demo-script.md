@@ -56,6 +56,8 @@
   - executive summary
   - category scorecard
   - recommendations for incoming exco
+- Click `Print / Save PDF`
+- Say: "The same report can be opened in a print-optimised view and exported as a handover or AGM-ready PDF."
 - Say: "Quorum does not just store records. It interprets the leadership cycle and produces a handover-ready audit report."
 
 ## 6:20 - 6:45 Links and Integrations
