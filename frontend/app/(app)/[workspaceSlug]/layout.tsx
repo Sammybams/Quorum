@@ -39,10 +39,32 @@ export default function WorkspaceLayout({
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const workspaceName = session?.workspace_name || params.workspaceSlug;
   const workspaceLabel = workspaceName.split("-").join(" ");
+  const prefetchTargets = [
+    `${base}/dashboard`,
+    `${base}/members`,
+    `${base}/events`,
+    `${base}/meetings`,
+    `${base}/campaigns`,
+    `${base}/dues`,
+    `${base}/budgets`,
+    `${base}/tasks`,
+    `${base}/links`,
+    `${base}/announcements`,
+    `${base}/settings/roles`,
+    `${base}/settings/workspace`,
+    `${base}/settings/integrations`,
+    `${base}/events/new`,
+  ];
 
   useEffect(() => {
     setSession(readSession());
   }, []);
+
+  useEffect(() => {
+    prefetchTargets.forEach((href) => {
+      router.prefetch(href);
+    });
+  }, [router, base]);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -116,7 +138,7 @@ export default function WorkspaceLayout({
   return (
     <div className="app-shell">
       <aside className="side-nav">
-        <Link href={`${base}/dashboard`} className="brand-block">
+        <Link href={`${base}/dashboard`} className="brand-block" prefetch>
           <img className="brand-logo-img" src="/brand/quorum-icon-circle.svg" alt="" />
           <span className="brand-copy">
             <strong>Quorum</strong>
@@ -131,7 +153,13 @@ export default function WorkspaceLayout({
             const isActive = pathname === href || pathname.startsWith(`${base}/${section}/`);
 
             return (
-              <Link key={item.href} className={`nav-item ${isActive ? "active" : ""}`} href={href} aria-current={isActive ? "page" : undefined}>
+              <Link
+                key={item.href}
+                className={`nav-item ${isActive ? "active" : ""}`}
+                href={href}
+                prefetch
+                aria-current={isActive ? "page" : undefined}
+              >
                 <span className="material-symbols-outlined" aria-hidden="true">
                   {item.icon}
                 </span>
@@ -142,7 +170,7 @@ export default function WorkspaceLayout({
         </nav>
 
         <div className="side-nav-actions">
-          <Link href={`${base}/campaigns`} className="side-action primary">
+          <Link href={`${base}/campaigns`} className="side-action primary" prefetch>
             <span className="material-symbols-outlined" aria-hidden="true">
               add
             </span>
@@ -208,7 +236,7 @@ export default function WorkspaceLayout({
                 notifications
               </span>
             </button>
-            <Link href={`${base}/events/new`} className="btn-secondary">
+            <Link href={`${base}/events/new`} className="btn-secondary" prefetch>
               <span className="material-symbols-outlined" aria-hidden="true">
                 add
               </span>
@@ -233,13 +261,13 @@ export default function WorkspaceLayout({
                     <strong>{session?.member_name || "Quorum user"}</strong>
                     <span>{session?.member_role || "Workspace member"}</span>
                   </div>
-                  <Link href={`${base}/dashboard`}>
+                  <Link href={`${base}/dashboard`} prefetch>
                     <span className="material-symbols-outlined" aria-hidden="true">
                       person
                     </span>
                     Profile
                   </Link>
-                  <Link href={`${base}/settings/workspace`}>
+                  <Link href={`${base}/settings/workspace`} prefetch>
                     <span className="material-symbols-outlined" aria-hidden="true">
                       settings
                     </span>

@@ -19,6 +19,39 @@ const valueCards = [
   },
 ];
 
+const pricingPlans = [
+  {
+    name: "Starter",
+    price: "Free",
+    text: "For small student bodies setting up structure, member records, and announcements.",
+  },
+  {
+    name: "Operations",
+    price: "Demo-ready",
+    text: "Adds dues, events, meetings, campaigns, and public portal workflows in one workspace.",
+  },
+  {
+    name: "Scale",
+    price: "Custom",
+    text: "For larger unions and umbrella bodies that need integrations, AI workflows, and governance controls.",
+  },
+];
+
+const resourceCards = [
+  {
+    title: "Demo workspace setup",
+    text: "Create the organisation, connect Google, invite officers, and start from a clean admin workspace.",
+  },
+  {
+    title: "Meetings to minutes",
+    text: "Run a meeting, sync or paste a transcript, and publish Claude-generated minutes with action items.",
+  },
+  {
+    title: "Treasury workflows",
+    text: "Show dues, campaigns, budget lines, contribution records, and exports in one flow.",
+  },
+];
+
 export default function HomePage() {
   return (
     <main className="stitch-landing">
@@ -44,7 +77,7 @@ export default function HomePage() {
         </div>
       </nav>
 
-      <header className="stitch-hero" id="features">
+      <header className="stitch-hero stitch-section" id="features">
         <div>
           <h1>
             Where student bodies <span>get things done.</span>
@@ -78,18 +111,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="stitch-proof" id="resources">
-        <p>Trusted by visionary student leaders across</p>
-        <div>
-          <span>UNILAG</span>
-          <span>OAU</span>
-          <span>UI</span>
-          <span>ABU</span>
-          <span>COVENANT</span>
-        </div>
-      </section>
-
-      <section className="stitch-values" id="solutions">
+      <section className="stitch-values stitch-section" id="solutions">
         <div className="stitch-intro">
           <h2>
             Designed for impact, not administration.
@@ -107,8 +129,26 @@ export default function HomePage() {
             </article>
           ))}
         </div>
+      </section>
 
-        <div className="stitch-bento" id="pricing">
+      <section className="stitch-pricing stitch-section" id="pricing">
+        <div className="stitch-intro">
+          <h2>Pricing that grows with the body.</h2>
+          <p>
+            Start clean for a demo, then scale into a full operating system as your leadership processes mature.
+          </p>
+        </div>
+        <div className="stitch-pricing-grid">
+          {pricingPlans.map((plan) => (
+            <article key={plan.name} className="stitch-pricing-card">
+              <p className="eyebrow">{plan.name}</p>
+              <h3>{plan.price}</h3>
+              <p>{plan.text}</p>
+            </article>
+          ))}
+        </div>
+
+        <div className="stitch-bento">
           <article className="stitch-bento-large">
             <h3>AI Receipt Verification</h3>
             <p>Automate financial governance. Scan and validate receipts against expected values instantly.</p>
@@ -138,6 +178,32 @@ export default function HomePage() {
               <span style={{ height: "68%" }} />
             </div>
           </article>
+        </div>
+      </section>
+
+      <section className="stitch-proof stitch-section" id="resources">
+        <p>Trusted by visionary student leaders across</p>
+        <div>
+          <span>UNILAG</span>
+          <span>OAU</span>
+          <span>UI</span>
+          <span>ABU</span>
+          <span>COVENANT</span>
+        </div>
+      </section>
+
+      <section className="stitch-resources stitch-section">
+        <div className="stitch-intro">
+          <h2>Resources for a strong technical demo.</h2>
+          <p>Walk judges through the exact flows that matter: setup, governance, finance, and AI-enabled meetings.</p>
+        </div>
+        <div className="stitch-resource-grid">
+          {resourceCards.map((item) => (
+            <article key={item.title} className="stitch-value-card">
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+            </article>
+          ))}
         </div>
       </section>
 
