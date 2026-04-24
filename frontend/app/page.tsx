@@ -358,9 +358,9 @@ export default function HomePage() {
         </div>
         <div>
           <a href="#">Terms</a>
-          <a href="#">Privacy</a>
+          <Link href="/privacy">Privacy</Link>
           <a href="#">Accessibility</a>
-          <a href="#">Support</a>
+          <a href="mailto:support@quorum.ng">Support</a>
         </div>
       </footer>
     </main>

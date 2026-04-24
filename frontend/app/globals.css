@@ -2688,6 +2688,65 @@ p {
   padding: 24px;
 }
 
+.legal-shell {
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 24px;
+}
+
+.legal-page {
+  background: var(--surface-lowest);
+  border-radius: 28px;
+  margin-top: 20px;
+  padding: 40px;
+}
+
+.legal-page-head {
+  border-bottom: 1px solid var(--outline);
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+}
+
+.legal-page-head h1 {
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  margin-bottom: 12px;
+}
+
+.legal-page-head p,
+.legal-section p,
+.legal-meta {
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.legal-meta {
+  font-size: 0.95rem;
+  margin-top: 12px;
+}
+
+.legal-section-list {
+  display: grid;
+  gap: 18px;
+}
+
+.legal-section {
+  border: 1px solid var(--outline);
+  border-radius: 20px;
+  padding: 22px 24px;
+}
+
+.legal-section h2 {
+  font-size: 1.18rem;
+  margin-bottom: 12px;
+}
+
+.legal-actions {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  margin-top: 28px;
+}
+
 .stitch-app-window {
   backdrop-filter: blur(18px);
   box-shadow: 0 28px 70px rgba(15, 23, 42, 0.2);
