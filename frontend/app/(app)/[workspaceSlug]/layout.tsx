@@ -20,6 +20,7 @@ const navItems = [
   { label: "Tasks", icon: "checklist", href: "tasks" },
   { label: "Links", icon: "link", href: "links" },
   { label: "Announcements", icon: "campaign", href: "announcements" },
+  { label: "Integrations", icon: "hub", href: "settings/integrations" },
   { label: "Settings", icon: "settings", href: "settings/roles" },
 ];
 
@@ -274,6 +275,12 @@ export default function WorkspaceLayout({
                       settings
                     </span>
                     Settings
+                  </Link>
+                  <Link href={`${base}/settings/integrations`} prefetch>
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      hub
+                    </span>
+                    Connect Google
                   </Link>
                   <button type="button" onClick={signOut}>
                     <span className="material-symbols-outlined" aria-hidden="true">

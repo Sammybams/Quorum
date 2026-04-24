@@ -23,6 +23,15 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 NOISY_WORKSPACE_MARKERS = ("test", "demo", "sample", "http", "sandbox")
 
 
+def _creator_title_label(value: str | None) -> str:
+    mapping = {
+        "president_lead": "President / Lead",
+        "president": "President / Lead",
+        "secretary": "Secretary",
+    }
+    return mapping.get((value or "").strip().lower(), "President / Lead")
+
+
 def _auth_response(db: MongoStore, workspace: models.Workspace, membership: models.WorkspaceMember) -> schemas.AuthLoginResponse:
     user = db.find_by_id("users", membership.user_id)
     role = db.find_by_id("roles", membership.role_id)
@@ -168,9 +177,6 @@ def register(payload: schemas.AuthRegisterRequest, db: MongoStore = Depends(get_
 
     roles = ensure_default_roles(db, workspace.id)
     owner_role = roles["owner"]
-    if payload.admin_role:
-        owner_role["name"] = payload.admin_role.replace("_", " ").title()
-        db.save("roles", owner_role)
 
     membership = db.insert(
         "workspace_members",
@@ -178,7 +184,7 @@ def register(payload: schemas.AuthRegisterRequest, db: MongoStore = Depends(get_
             "workspace_id": workspace.id,
             "user_id": user.id,
             "role_id": owner_role.id,
-            "level": "Admin",
+            "level": _creator_title_label(payload.admin_role),
             "dues_status": "paid",
             "is_general_member": False,
             "status": "active",
@@ -191,8 +197,8 @@ def register(payload: schemas.AuthRegisterRequest, db: MongoStore = Depends(get_
             "workspace_id": workspace.id,
             "full_name": user.full_name,
             "email": user.email,
-            "role": payload.admin_role or "owner",
-            "level": "Admin",
+            "role": owner_role.name,
+            "level": _creator_title_label(payload.admin_role),
             "dues_status": "paid",
         },
     )

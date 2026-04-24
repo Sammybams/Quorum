@@ -27,7 +27,7 @@ export default function RegisterPage() {
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [role, setRole] = useState("super_admin");
+  const [officeTitle, setOfficeTitle] = useState("president_lead");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [workspaceSlug, setWorkspaceSlug] = useState("workspace");
@@ -61,6 +61,13 @@ export default function RegisterPage() {
       return;
     }
 
+    const normalizedWorkspaceSlug = slugify(workspaceSlug);
+
+    if (!normalizedWorkspaceSlug) {
+      setError("Choose a workspace slug with at least one letter or number.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -75,19 +82,19 @@ export default function RegisterPage() {
           admin_name: string;
           admin_email: string;
           phone_number?: string;
-          admin_role: string;
+          admin_role?: string;
           password: string;
         }
       >("/auth/register", {
         organization_name: organizationName.trim(),
-        workspace_slug: slugify(workspaceSlug),
+        workspace_slug: normalizedWorkspaceSlug,
         university: university.trim() || undefined,
         body_type: bodyType,
         faculty: faculty.trim() || undefined,
         admin_name: adminName.trim(),
         admin_email: adminEmail.trim().toLowerCase(),
         phone_number: phoneNumber.trim() || undefined,
-        admin_role: role,
+        admin_role: officeTitle,
         password,
       });
 
@@ -172,7 +179,7 @@ export default function RegisterPage() {
           </div>
           <p className="eyebrow">Workspace setup</p>
           <h1>Set the stage for your student body.</h1>
-          <p>Start with the organization, then create the lead admin account for the workspace.</p>
+          <p>Start with the organization, then create the full-access admin account for the workspace.</p>
         </aside>
 
         <section className="signup-card">
@@ -256,14 +263,14 @@ export default function RegisterPage() {
                 </label>
 
                 <label>
-                  School email
+                  Email
                   <span className="input-shell">
                     <span className="material-symbols-outlined" aria-hidden="true">
                       alternate_email
                     </span>
                     <input
                       type="email"
-                      placeholder="you@school.edu.ng"
+                      placeholder="you@example.com"
                       value={adminEmail}
                       onChange={(event) => setAdminEmail(event.target.value)}
                       required
@@ -283,13 +290,20 @@ export default function RegisterPage() {
                     />
                   </label>
                   <label>
-                    Role
-                    <select value={role} onChange={(event) => setRole(event.target.value)}>
-                      <option value="super_admin">Super Admin</option>
-                      <option value="president">President / Lead</option>
-                    </select>
+                    Office title
+                    <span className="select-shell">
+                      <select value={officeTitle} onChange={(event) => setOfficeTitle(event.target.value)}>
+                        <option value="president_lead">President / Lead</option>
+                        <option value="secretary">Secretary</option>
+                      </select>
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        expand_more
+                      </span>
+                    </span>
                   </label>
                 </div>
+
+                <p className="muted-copy">This title is for documentation. The creator still gets full workspace access and can adjust roles later.</p>
 
                 <div className="form-two">
                   <label>
@@ -323,7 +337,7 @@ export default function RegisterPage() {
                       value={workspaceSlug}
                       onChange={(event) => {
                         setSlugEdited(true);
-                        setWorkspaceSlug(slugify(event.target.value));
+                        setWorkspaceSlug(event.target.value);
                       }}
                       required
                     />

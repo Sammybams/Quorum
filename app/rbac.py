@@ -68,7 +68,7 @@ CORE_MEMBER_PERMISSIONS = [
 ]
 
 DEFAULT_ROLE_DEFINITIONS = [
-    ("owner", "Workspace Owner", "System owner role with full access.", OWNER_PERMISSIONS, True),
+    ("owner", "Super Admin", "Primary workspace owner role with full access to every module and setting.", OWNER_PERMISSIONS, True),
     ("secretary", "Secretary", "System secretary role for meetings, minutes, and announcements.", SECRETARY_PERMISSIONS, True),
     ("core_member", "Core Member", "General member role with personal read access.", CORE_MEMBER_PERMISSIONS, False),
 ]
@@ -90,6 +90,20 @@ def ensure_default_roles(db: MongoStore, workspace_id: int) -> dict[str, models.
                     "permissions": sorted(set(permissions)),
                 },
             )
+        elif role.get("is_system_role"):
+            changed = False
+            if role.name != name:
+                role["name"] = name
+                changed = True
+            if role.get("description") != description:
+                role["description"] = description
+                changed = True
+            normalized_permissions = sorted(set(permissions))
+            if sorted(role.get("permissions", [])) != normalized_permissions:
+                role["permissions"] = normalized_permissions
+                changed = True
+            if changed:
+                db.save("roles", role)
         roles[key] = role
     return roles
 

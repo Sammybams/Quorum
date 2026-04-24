@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { apiGet, apiPost } from "@/lib/api";
@@ -164,6 +165,12 @@ export default function MembersClient({
           </p>
         </div>
         <div className="page-actions">
+          <Link href={`/${workspace.slug}/settings/integrations`} className="btn-ghost">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              hub
+            </span>
+            Connect Google
+          </Link>
           <button type="button" className="btn-secondary" onClick={() => setInviteOpen(true)}>
             <span className="material-symbols-outlined" aria-hidden="true">
               person_add
@@ -282,6 +289,9 @@ export default function MembersClient({
             <div className="invite-link-box">
               <span>{inviteUrl || "No bulk invite link yet. Generate one to copy a /join link."}</span>
               <div className="invite-link-actions">
+                <Link href={`/${workspace.slug}/settings/integrations`} className="btn-ghost">
+                  Connect Google
+                </Link>
                 <button type="button" className="btn-secondary" onClick={createInviteLink} disabled={loading || !roleId}>
                   {inviteUrl ? "Regenerate link" : "Generate link"}
                 </button>

@@ -901,7 +901,7 @@ p {
 }
 
 .side-nav {
-  background: #ffffff;
+  background: var(--surface-lowest);
   border-right: 1px solid var(--outline);
   display: flex;
   flex-direction: column;

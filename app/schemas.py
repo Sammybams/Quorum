@@ -427,7 +427,7 @@ class AuthRegisterRequest(BaseModel):
     admin_name: str = Field(min_length=2, max_length=120)
     admin_email: str
     phone_number: str | None = None
-    admin_role: str = "super_admin"
+    admin_role: str | None = None
     password: str | None = None
 
 
