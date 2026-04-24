@@ -4,6 +4,7 @@ from .. import schemas
 from ..database import DESC, MongoStore, get_db
 from ..membership import sync_workspace_members_from_legacy
 from ..rbac import require_workspace_permission
+from ..security import verify_password
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -38,6 +39,36 @@ def get_workspace_overview(slug: str, db: MongoStore = Depends(get_db)):
     active_filter = {"workspace_id": workspace.id, "status": "active"}
     member_count = db.count("workspace_members", active_filter)
     paid_members = db.count("workspace_members", {**active_filter, "dues_status": "paid"})
+    recent_activity = []
+
+    for event in db.find_many("events", {"workspace_id": workspace.id}, sort=[("created_at", DESC)], limit=3):
+        recent_activity.append(
+            schemas.RecentActivityItem(
+                type="event",
+                title=event.title,
+                description=f"Event scheduled for {event.starts_at}",
+                created_at=event.created_at,
+            )
+        )
+    for payment in db.find_many("dues_payments", {"workspace_id": workspace.id}, sort=[("created_at", DESC)], limit=3):
+        recent_activity.append(
+            schemas.RecentActivityItem(
+                type="dues_payment",
+                title="Dues payment recorded",
+                description=f"NGN {payment.amount:,.0f} · {payment.status}",
+                created_at=payment.created_at,
+            )
+        )
+    for announcement in db.find_many("announcements", {"workspace_id": workspace.id}, sort=[("created_at", DESC)], limit=3):
+        recent_activity.append(
+            schemas.RecentActivityItem(
+                type="announcement",
+                title=announcement.title,
+                description=announcement.get("status", "published").title(),
+                created_at=announcement.created_at,
+            )
+        )
+    recent_activity = sorted(recent_activity, key=lambda item: item.created_at, reverse=True)[:6]
 
     return schemas.WorkspaceOverview(
         workspace=workspace,
@@ -49,6 +80,9 @@ def get_workspace_overview(slug: str, db: MongoStore = Depends(get_db)):
             links=db.count("short_links", {"workspace_id": workspace.id}),
             paid_members=paid_members,
             pending_members=max(member_count - paid_members, 0),
+            tasks=db.count("tasks", {"workspace_id": workspace.id}),
+            pending_tasks=db.count("tasks", {"workspace_id": workspace.id, "status": {"$in": ["todo", "in_progress"]}}),
+            meetings=db.count("meetings", {"workspace_id": workspace.id}),
         ),
         recent_events=db.find_many("events", {"workspace_id": workspace.id}, sort=[("created_at", DESC)], limit=4),
         active_campaigns=db.find_many("campaigns", {"workspace_id": workspace.id}, sort=[("created_at", DESC)], limit=4),
@@ -60,6 +94,7 @@ def get_workspace_overview(slug: str, db: MongoStore = Depends(get_db)):
             sort=[("is_pinned", DESC), ("published_at", DESC)],
             limit=4,
         ),
+        recent_activity=recent_activity,
     )
 
 
@@ -93,3 +128,40 @@ def update_workspace(
         workspace["description"] = values["description"]
 
     return db.save("workspaces", workspace)
+
+
+@router.post("/{workspace_id}/transfer-ownership", response_model=schemas.AuthStatusResponse)
+def transfer_ownership(
+    workspace_id: int,
+    payload: schemas.TransferOwnershipRequest,
+    db: MongoStore = Depends(get_db),
+    membership=Depends(require_workspace_permission("ownership.transfer")),
+):
+    workspace = db.find_by_id("workspaces", workspace_id)
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    acting_user = db.find_by_id("users", membership.user_id)
+    if not acting_user or not verify_password(payload.password, acting_user.get("password_hash")):
+        raise HTTPException(status_code=401, detail="Password confirmation failed")
+
+    target_membership = db.find_one("workspace_members", {"id": payload.target_member_id, "workspace_id": workspace_id, "status": "active"})
+    if not target_membership:
+        raise HTTPException(status_code=404, detail="Target member not found")
+
+    owner_role = db.find_one("roles", {"workspace_id": workspace_id, "key": "owner"})
+    fallback_role = db.find_by_id("roles", payload.fallback_role_id) if payload.fallback_role_id else db.find_one("roles", {"workspace_id": workspace_id, "key": "core_member"})
+    if not owner_role or not fallback_role:
+        raise HTTPException(status_code=404, detail="Required roles not found")
+
+    current_owner_membership = db.find_one("workspace_members", {"workspace_id": workspace_id, "user_id": acting_user.id})
+    if current_owner_membership:
+        current_owner_membership["role_id"] = fallback_role.id
+        current_owner_membership["is_general_member"] = fallback_role.key == "core_member"
+        db.save("workspace_members", current_owner_membership)
+
+    target_membership["role_id"] = owner_role.id
+    target_membership["is_general_member"] = False
+    db.save("workspace_members", target_membership)
+    workspace["owner_user_id"] = target_membership.user_id
+    db.save("workspaces", workspace)
+    return schemas.AuthStatusResponse(message="Ownership transferred.")

@@ -13,6 +13,9 @@ type Overview = {
     links: number;
     paid_members: number;
     pending_members: number;
+    tasks: number;
+    pending_tasks: number;
+    meetings: number;
   };
   recent_events: Array<{ id: number; title: string; starts_at: string; venue?: string; rsvp_count: number }>;
   active_campaigns: Array<{
@@ -31,6 +34,12 @@ type Overview = {
     status: string;
     is_pinned: boolean;
     published_at?: string | null;
+  }>;
+  recent_activity: Array<{
+    type: string;
+    title: string;
+    description: string;
+    created_at: string;
   }>;
 };
 
@@ -118,6 +127,14 @@ export default async function DashboardPage({ params }: { params: { workspaceSlu
           <small>Events</small>
           <strong>{counts.events}</strong>
           <p>{overview.recent_events.length} recent</p>
+        </article>
+        <article className="metric-card">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            checklist
+          </span>
+          <small>Tasks</small>
+          <strong>{counts.pending_tasks}</strong>
+          <p>{counts.tasks} tracked</p>
         </article>
         <article className="metric-card">
           <span className="material-symbols-outlined" aria-hidden="true">
@@ -217,6 +234,24 @@ export default async function DashboardPage({ params }: { params: { workspaceSlu
                   <div key={announcement.id}>
                     <span>{announcement.is_pinned ? "Pinned" : "Published"}</span>
                     <strong>{announcement.title}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article className="panel-card">
+            <div className="card-head compact">
+              <h2>Recent activity</h2>
+            </div>
+            {overview.recent_activity.length === 0 ? (
+              <EmptyBlock icon="history" title="No activity yet" text="Recent workspace activity will show up here." />
+            ) : (
+              <div className="mini-list">
+                {overview.recent_activity.map((item, index) => (
+                  <div key={`${item.type}-${index}`}>
+                    <span>{item.type.replace("_", " ")}</span>
+                    <strong>{item.title}</strong>
                   </div>
                 ))}
               </div>

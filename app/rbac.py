@@ -121,6 +121,8 @@ def get_current_user(
     payload = decode_access_token(authorization.split(" ", 1)[1])
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired access token")
+    if db.find_one("revoked_tokens", {"jti": payload.get("jti")}):
+        raise HTTPException(status_code=401, detail="Access token has been revoked")
 
     user = db.find_by_id("users", int(payload["sub"]))
     if not user:

@@ -37,7 +37,7 @@ export default async function EventsPage({ params }: { params: { workspaceSlug: 
         ) : (
           <div className="activity-list">
             {events.map((event) => (
-              <div key={event.id} className="activity-item">
+              <Link key={event.id} href={`/${workspace.slug}/events/${event.id}`} className="activity-item">
                 <div>
                   <h3>{event.title}</h3>
                   <p>{event.event_type} · {event.venue || "Venue TBD"}</p>
@@ -46,7 +46,7 @@ export default async function EventsPage({ params }: { params: { workspaceSlug: 
                   <span>{event.starts_at}</span>
                   <strong>{event.rsvp_count} RSVPs</strong>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

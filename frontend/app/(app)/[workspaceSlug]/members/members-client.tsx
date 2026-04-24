@@ -15,7 +15,15 @@ type Member = {
   dues_status?: string;
 };
 type Role = { id: number; name: string; key: string; is_system_role: boolean };
-type Invitation = { id: number; email: string; role_name: string; token: string; status: string };
+type Invitation = {
+  id: number;
+  email: string;
+  role_name: string;
+  token: string;
+  status: string;
+  email_delivery_status?: string | null;
+  expires_at?: string | null;
+};
 type InviteLink = { id: number; token: string; role_name: string; is_active: boolean };
 
 export default function MembersClient({
@@ -36,6 +44,7 @@ export default function MembersClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadInviteData() {
@@ -77,6 +86,19 @@ export default function MembersClient({
     await navigator.clipboard.writeText(inviteUrl);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  function directInviteUrl(invitation: Invitation) {
+    if (typeof window === "undefined") {
+      return `/invites/${invitation.token}`;
+    }
+    return `${window.location.origin}/invites/${invitation.token}`;
+  }
+
+  async function copyDirectInvite(invitation: Invitation) {
+    await navigator.clipboard.writeText(directInviteUrl(invitation));
+    setCopiedInviteId(invitation.id);
+    window.setTimeout(() => setCopiedInviteId(null), 1800);
   }
 
   async function createInviteLink() {
@@ -151,6 +173,39 @@ export default function MembersClient({
           </button>
         </div>
       </header>
+
+      {pendingInvitations.length > 0 ? (
+        <section className="panel-card pending-invites-card">
+          <div className="card-head compact">
+            <div>
+              <h2>Pending invitations</h2>
+              <p>{pendingInvitations.length} {pendingInvitations.length === 1 ? "person has" : "people have"} not accepted yet.</p>
+            </div>
+            <button type="button" className="btn-secondary" onClick={() => setInviteOpen(true)}>
+              Manage invites
+            </button>
+          </div>
+          <div className="pending-invite-list">
+            {pendingInvitations.map((invitation) => (
+              <div className="pending-invite-row" key={invitation.id}>
+                <div>
+                  <strong>{invitation.email}</strong>
+                  <span>
+                    {invitation.role_name} · {deliveryLabel(invitation.email_delivery_status)}
+                    {invitation.expires_at ? ` · expires ${new Date(invitation.expires_at).toLocaleDateString()}` : ""}
+                  </span>
+                </div>
+                <span className={`status-pill ${invitation.email_delivery_status === "sent" ? "ok" : "pending"}`}>
+                  {invitation.status}
+                </span>
+                <button type="button" className="btn-secondary" onClick={() => copyDirectInvite(invitation)}>
+                  {copiedInviteId === invitation.id ? "Copied" : "Copy invite link"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel-card">
         {members.length === 0 ? (
@@ -273,11 +328,16 @@ export default function MembersClient({
               {error ? <p className="form-error">{error}</p> : null}
 
               {pendingInvitations.length > 0 ? (
-                <div className="mini-list">
+                <div className="invite-modal-list">
                   {pendingInvitations.slice(0, 4).map((invitation) => (
-                    <div key={invitation.id}>
-                      <span>{invitation.email}</span>
-                      <strong>{invitation.role_name} · {invitation.status}</strong>
+                    <div className="invite-modal-row" key={invitation.id}>
+                      <div>
+                        <span>{invitation.email}</span>
+                        <strong>{invitation.role_name} · {deliveryLabel(invitation.email_delivery_status)}</strong>
+                      </div>
+                      <button type="button" className="btn-secondary" onClick={() => copyDirectInvite(invitation)}>
+                        {copiedInviteId === invitation.id ? "Copied" : "Copy link"}
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -297,6 +357,19 @@ export default function MembersClient({
       ) : null}
     </section>
   );
+}
+
+function deliveryLabel(status?: string | null) {
+  if (status === "sent") {
+    return "email sent";
+  }
+  if (status === "failed") {
+    return "email failed";
+  }
+  if (status === "not_configured") {
+    return "email not configured";
+  }
+  return "email pending";
 }
 
 function initials(name: string) {

@@ -1,27 +1,40 @@
-import { apiGet } from "@/lib/api";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getCampaignBySlug } from "@/lib/api/campaigns";
 import { DonationForm } from "./donation-form";
 
-type FundingStream = {
-  id: number;
-  name: string;
-  stream_type: string;
-  target_amount: number | null;
-  raised_amount: number;
-};
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-type CampaignPublic = {
-  name: string;
-  slug: string;
-  target_amount: number;
-  raised_amount: number;
-  status: string;
-  workspace: { name: string; slug: string };
-  funding_streams: FundingStream[];
-  contributor_count: number;
-};
+export async function generateMetadata({ params }: { params: { campaignSlug: string } }): Promise<Metadata> {
+  const campaign = await getCampaignBySlug(params.campaignSlug);
+  if (!campaign) return {};
+
+  const title = `${campaign.name} | ${campaign.workspace_name}`;
+  const description = `${campaign.workspace_name} is raising NGN ${campaign.target_amount.toLocaleString("en-NG")} on Quorum.`;
+  const ogImage = `${APP_URL}/api/og/campaign/${campaign.slug}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: `${APP_URL}/donate/${campaign.slug}`,
+      images: [{ url: ogImage, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
 
 export default async function DonatePage({ params }: { params: { campaignSlug: string } }) {
-  const campaign = await apiGet<CampaignPublic>(`/public/donate/${params.campaignSlug}`);
+  const campaign = await getCampaignBySlug(params.campaignSlug);
+  if (!campaign) notFound();
   const percent = campaign.target_amount > 0 ? Math.round((campaign.raised_amount / campaign.target_amount) * 100) : 0;
 
   return (

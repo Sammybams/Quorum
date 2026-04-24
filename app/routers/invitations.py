@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from .. import models, schemas
 from ..database import MongoStore, get_db
+from ..email import send_invitation_email
 from ..rbac import require_workspace_permission
 from ..security import hash_password
 from .auth import _auth_response
@@ -23,6 +24,10 @@ def create_invitation(
     role = db.find_one("roles", {"workspace_id": workspace_id, "id": payload.role_id})
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
+    workspace = db.find_by_id("workspaces", workspace_id)
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    inviter = db.find_by_id("users", membership.user_id)
 
     invitation = db.insert(
         "invitations",
@@ -34,9 +39,22 @@ def create_invitation(
             "token": secrets.token_urlsafe(32),
             "note": payload.note,
             "status": "pending",
+            "email_delivery_status": "pending",
             "expires_at": datetime.utcnow() + timedelta(hours=72),
         },
     )
+    email_result = send_invitation_email(
+        to_email=invitation.email,
+        workspace_name=workspace.name,
+        role_name=role.name,
+        token=invitation.token,
+        note=payload.note,
+        reply_to=inviter.email if inviter else None,
+    )
+    invitation["email_delivery_status"] = email_result.status
+    if email_result.error:
+        invitation["email_delivery_error"] = email_result.error[:500]
+    invitation = db.save("invitations", invitation)
     return _invitation_out(db, invitation)
 
 
@@ -203,6 +221,7 @@ def _invitation_out(db: MongoStore, invitation: models.Invitation) -> schemas.In
         role_name=role.name if role else "Unknown role",
         token=invitation.token,
         status=invitation.status,
+        email_delivery_status=invitation.get("email_delivery_status"),
         expires_at=invitation.get("expires_at"),
         created_at=invitation.created_at,
     )

@@ -179,10 +179,10 @@ export default function DuesClient({
       </section>
 
       <section className="content-grid">
-        <article className="panel-card">
+        <article className="panel-card cycles-card">
           <h2>Active cycles</h2>
           {cycles.length === 0 ? (
-            <div className="empty-state">
+            <div className="empty-state cycles-empty">
               <span className="material-symbols-outlined" aria-hidden="true">
                 receipt_long
               </span>

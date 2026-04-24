@@ -10,6 +10,9 @@ from typing import Any
 
 APP_SECRET = os.getenv("APP_SECRET", "dev-only-change-me")
 TOKEN_TTL_SECONDS = int(os.getenv("ACCESS_TOKEN_TTL_SECONDS", "86400"))
+REFRESH_TOKEN_TTL_SECONDS = int(os.getenv("REFRESH_TOKEN_TTL_SECONDS", str(60 * 60 * 24 * 30)))
+EMAIL_TOKEN_TTL_SECONDS = int(os.getenv("EMAIL_TOKEN_TTL_SECONDS", str(60 * 60 * 24)))
+PASSWORD_RESET_TOKEN_TTL_SECONDS = int(os.getenv("PASSWORD_RESET_TOKEN_TTL_SECONDS", str(60 * 60)))
 PASSWORD_ITERATIONS = 210_000
 
 
@@ -41,14 +44,34 @@ def verify_password(password: str, stored_hash: str | None) -> bool:
 
 
 def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> str:
+    return create_signed_token(subject, TOKEN_TTL_SECONDS, {"type": "access", **(extra or {})})
+
+
+def create_refresh_token(subject: str, extra: dict[str, Any] | None = None) -> str:
+    return create_signed_token(subject, REFRESH_TOKEN_TTL_SECONDS, {"type": "refresh", **(extra or {})})
+
+
+def create_email_token(subject: str, extra: dict[str, Any] | None = None) -> str:
+    return create_signed_token(subject, EMAIL_TOKEN_TTL_SECONDS, {"type": "email_verification", **(extra or {})})
+
+
+def create_reset_token(subject: str, extra: dict[str, Any] | None = None) -> str:
+    return create_signed_token(subject, PASSWORD_RESET_TOKEN_TTL_SECONDS, {"type": "password_reset", **(extra or {})})
+
+
+def create_signed_token(subject: str, ttl_seconds: int, extra: dict[str, Any] | None = None) -> str:
     now = int(time.time())
-    payload = {"sub": subject, "iat": now, "exp": now + TOKEN_TTL_SECONDS, **(extra or {})}
+    payload = {"sub": subject, "iat": now, "exp": now + ttl_seconds, "jti": secrets.token_urlsafe(18), **(extra or {})}
     encoded_payload = _b64encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     signature = _sign(encoded_payload)
     return f"{encoded_payload}.{signature}"
 
 
 def decode_access_token(token: str) -> dict[str, Any] | None:
+    return decode_signed_token(token, expected_type="access")
+
+
+def decode_signed_token(token: str, expected_type: str | None = None) -> dict[str, Any] | None:
     try:
         encoded_payload, signature = token.split(".", 1)
     except ValueError:
@@ -64,6 +87,8 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
         return None
 
     if int(payload.get("exp", 0)) < int(time.time()):
+        return None
+    if expected_type and payload.get("type") != expected_type:
         return None
 
     return payload

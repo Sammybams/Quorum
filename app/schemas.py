@@ -1,5 +1,6 @@
+import os
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class WorkspaceBase(BaseModel):
@@ -158,6 +159,7 @@ class EventCreate(BaseModel):
     description: str | None = None
     rsvp_enabled: bool = True
     capacity: int | None = None
+    thumbnail_url: str | None = None
 
 
 class EventOut(EventCreate):
@@ -167,6 +169,50 @@ class EventOut(EventCreate):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class EventUpdate(BaseModel):
+    title: str | None = None
+    event_type: str | None = None
+    starts_at: str | None = None
+    venue: str | None = None
+    description: str | None = None
+    rsvp_enabled: bool | None = None
+    capacity: int | None = None
+    thumbnail_url: str | None = None
+
+
+class EventAttendeeCreate(BaseModel):
+    full_name: str = Field(min_length=2, max_length=120)
+    email: str
+
+
+class EventAttendeeOut(BaseModel):
+    id: int
+    event_id: int
+    workspace_id: int
+    member_id: int | None = None
+    full_name: str
+    email: str
+    status: str
+    rsvp_at: datetime
+    checked_in_at: datetime | None = None
+
+
+class EventDetailOut(EventOut):
+    attendees: list[EventAttendeeOut] = Field(default_factory=list)
+
+
+class EventAnalyticsPoint(BaseModel):
+    label: str
+    value: int
+
+
+class EventAnalyticsOut(BaseModel):
+    total_events: int
+    total_rsvps: int
+    total_checked_in: int
+    by_type: list[EventAnalyticsPoint]
 
 
 class CampaignCreate(BaseModel):
@@ -252,8 +298,18 @@ class PublicContributionResponse(BaseModel):
 
 
 class LinkCreate(BaseModel):
-    slug: str
-    destination_url: str
+    slug: str = Field(min_length=1, max_length=80)
+    destination_url: str = Field(min_length=8, max_length=2000)
+    title: str | None = Field(default=None, max_length=200)
+    expires_at: datetime | None = None
+
+
+class LinkUpdate(BaseModel):
+    slug: str | None = Field(default=None, min_length=1, max_length=80)
+    destination_url: str | None = Field(default=None, min_length=8, max_length=2000)
+    title: str | None = Field(default=None, max_length=200)
+    expires_at: datetime | None = None
+    is_active: bool | None = None
 
 
 class LinkOut(LinkCreate):
@@ -263,7 +319,35 @@ class LinkOut(LinkCreate):
     is_active: bool
     created_at: datetime
 
+    @computed_field
+    @property
+    def short_url(self) -> str:
+        base_url = (
+            os.getenv("APP_URL")
+            or os.getenv("PUBLIC_APP_URL")
+            or os.getenv("FRONTEND_URL")
+            or "http://localhost:3000"
+        )
+        return f"{base_url.rstrip('/')}/{self.slug}"
+
     model_config = {"from_attributes": True}
+
+
+class ClickRequest(BaseModel):
+    link_id: int
+    referer: str | None = None
+    user_agent: str | None = None
+
+
+class DailyClickCount(BaseModel):
+    day: str
+    count: int
+
+
+class LinkAnalyticsOut(BaseModel):
+    link_id: int
+    total: int
+    daily: list[DailyClickCount]
 
 
 class AnnouncementCreate(BaseModel):
@@ -272,6 +356,11 @@ class AnnouncementCreate(BaseModel):
     status: str = "published"
     is_pinned: bool = False
     published_at: datetime | None = None
+    scheduled_for: datetime | None = None
+    audience: str = "all_members"
+    channels: list[str] = Field(default_factory=lambda: ["in_app"])
+    target_role_ids: list[int] = Field(default_factory=list)
+    target_levels: list[str] = Field(default_factory=list)
 
 
 class AnnouncementUpdate(BaseModel):
@@ -280,6 +369,11 @@ class AnnouncementUpdate(BaseModel):
     status: str | None = None
     is_pinned: bool | None = None
     published_at: datetime | None = None
+    scheduled_for: datetime | None = None
+    audience: str | None = None
+    channels: list[str] | None = None
+    target_role_ids: list[int] | None = None
+    target_levels: list[str] | None = None
 
 
 class AnnouncementOut(BaseModel):
@@ -290,6 +384,13 @@ class AnnouncementOut(BaseModel):
     status: str
     is_pinned: bool
     published_at: datetime | None = None
+    scheduled_for: datetime | None = None
+    delivered_at: datetime | None = None
+    delivery_count: int = 0
+    audience: str = "all_members"
+    channels: list[str] = Field(default_factory=list)
+    target_role_ids: list[int] = Field(default_factory=list)
+    target_levels: list[str] = Field(default_factory=list)
     archived_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
@@ -312,6 +413,7 @@ class AuthLoginResponse(BaseModel):
     user_id: int | None = None
     role_key: str | None = None
     access_token: str | None = None
+    refresh_token: str | None = None
     token_type: str = "bearer"
     workspaces: list["AuthMeWorkspace"] = Field(default_factory=list)
 
@@ -343,6 +445,33 @@ class AuthMeResponse(BaseModel):
     workspaces: list[AuthMeWorkspace]
 
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str | None = None
+    access_token: str | None = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=6)
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class AuthStatusResponse(BaseModel):
+    ok: bool = True
+    message: str
+
+
 class InvitationCreate(BaseModel):
     email: str
     role_id: int
@@ -357,6 +486,7 @@ class InvitationOut(BaseModel):
     role_name: str
     token: str
     status: str
+    email_delivery_status: str | None = None
     expires_at: datetime | None = None
     created_at: datetime
 
@@ -395,6 +525,37 @@ class InviteLinkAccept(InvitationAccept):
     email: str
 
 
+class TransferOwnershipRequest(BaseModel):
+    target_member_id: int
+    password: str = Field(min_length=6)
+    fallback_role_id: int | None = None
+
+
+class TransferRoleRequest(BaseModel):
+    target_member_id: int
+    role_id: int
+    outgoing_member_role_id: int | None = None
+
+
+class IntegrationOut(BaseModel):
+    provider: str
+    status: str
+    configured: bool
+    connected_email: str | None = None
+    scopes: list[str] = Field(default_factory=list)
+    connected_at: datetime | None = None
+    expires_at: datetime | None = None
+    metadata: dict[str, str] = Field(default_factory=dict)
+
+
+class GoogleOAuthStartOut(BaseModel):
+    authorization_url: str
+
+
+class FirefliesTranscriptImportRequest(BaseModel):
+    transcript_id: str = Field(min_length=2)
+
+
 class DashboardCounts(BaseModel):
     members: int
     dues_cycles: int
@@ -403,6 +564,16 @@ class DashboardCounts(BaseModel):
     links: int
     paid_members: int
     pending_members: int
+    tasks: int = 0
+    pending_tasks: int = 0
+    meetings: int = 0
+
+
+class RecentActivityItem(BaseModel):
+    type: str
+    title: str
+    description: str
+    created_at: datetime
 
 
 class WorkspaceOverview(BaseModel):
@@ -413,3 +584,181 @@ class WorkspaceOverview(BaseModel):
     dues_cycles: list[DuesCycleOut]
     links: list[LinkOut]
     announcements: list[AnnouncementOut]
+    recent_activity: list[RecentActivityItem] = Field(default_factory=list)
+
+
+class TaskCreate(BaseModel):
+    title: str = Field(min_length=2, max_length=180)
+    description: str | None = None
+    assigned_to_member_id: int | None = None
+    due_date: str | None = None
+    priority: str = "medium"
+    status: str = "todo"
+    linked_module: str | None = None
+    linked_id: int | None = None
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=180)
+    description: str | None = None
+    assigned_to_member_id: int | None = None
+    due_date: str | None = None
+    priority: str | None = None
+    status: str | None = None
+
+
+class TaskOut(BaseModel):
+    id: int
+    workspace_id: int
+    title: str
+    description: str | None = None
+    assigned_to_member_id: int | None = None
+    assigned_to_name: str | None = None
+    due_date: str | None = None
+    priority: str
+    status: str
+    linked_module: str | None = None
+    linked_id: int | None = None
+    created_by_user_id: int | None = None
+    created_at: datetime
+
+
+class MeetingCreate(BaseModel):
+    title: str = Field(min_length=2, max_length=180)
+    meeting_type: str = "general"
+    scheduled_for: str
+    venue: str | None = None
+    virtual_link: str | None = None
+    agenda: list[str] = Field(default_factory=list)
+    quorum_threshold: int | None = None
+
+
+class MeetingUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=180)
+    meeting_type: str | None = None
+    scheduled_for: str | None = None
+    venue: str | None = None
+    virtual_link: str | None = None
+    agenda: list[str] | None = None
+    quorum_threshold: int | None = None
+    status: str | None = None
+
+
+class MeetingMinutesUpdate(BaseModel):
+    summary: str | None = None
+    content: str | None = None
+    attendance_summary: str | None = None
+    decisions: list[str] | None = None
+
+
+class TranscriptUpload(BaseModel):
+    transcript: str = Field(min_length=10)
+
+
+class MeetingOut(BaseModel):
+    id: int
+    workspace_id: int
+    title: str
+    meeting_type: str
+    scheduled_for: str
+    venue: str | None = None
+    virtual_link: str | None = None
+    agenda: list[str] = Field(default_factory=list)
+    quorum_threshold: int | None = None
+    status: str
+    transcript: str | None = None
+    transcript_source: str | None = None
+    attendee_count: int = 0
+    created_by_user_id: int | None = None
+    created_at: datetime
+
+
+class MeetingMinutesOut(BaseModel):
+    id: int
+    meeting_id: int
+    summary: str | None = None
+    content: str | None = None
+    attendance_summary: str | None = None
+    decisions: list[str] = Field(default_factory=list)
+    ai_status: str = "draft"
+    generated_by_model: str | None = None
+    generated_at: datetime | None = None
+    generation_error: str | None = None
+    published_at: datetime | None = None
+    published_by_user_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ActionItemCreate(BaseModel):
+    description: str = Field(min_length=2)
+    assigned_to_member_id: int | None = None
+    due_date: str | None = None
+
+
+class ActionItemOut(BaseModel):
+    id: int
+    meeting_id: int
+    description: str
+    assigned_to_member_id: int | None = None
+    assigned_to_name: str | None = None
+    due_date: str | None = None
+    status: str
+    generated_by: str | None = None
+    created_at: datetime
+
+
+class MeetingDetailOut(MeetingOut):
+    minutes: MeetingMinutesOut | None = None
+    action_items: list[ActionItemOut] = Field(default_factory=list)
+
+
+class BudgetCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=180)
+    description: str | None = None
+    period_label: str | None = None
+
+
+class BudgetUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=180)
+    description: str | None = None
+    period_label: str | None = None
+    status: str | None = None
+
+
+class BudgetLineCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=180)
+    planned_amount: float = Field(gt=0)
+    notes: str | None = None
+
+
+class ExpenditureCreate(BaseModel):
+    amount: float = Field(gt=0)
+    notes: str | None = None
+    spent_at: str | None = None
+
+
+class BudgetLineOut(BaseModel):
+    id: int
+    budget_id: int
+    name: str
+    planned_amount: float
+    actual_amount: float
+    notes: str | None = None
+    created_at: datetime
+
+
+class BudgetOut(BaseModel):
+    id: int
+    workspace_id: int
+    name: str
+    description: str | None = None
+    period_label: str | None = None
+    status: str
+    planned_total: float
+    actual_total: float
+    created_at: datetime
+
+
+class BudgetDetailOut(BudgetOut):
+    lines: list[BudgetLineOut] = Field(default_factory=list)

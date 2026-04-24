@@ -72,6 +72,38 @@ def list_members(workspace_id: int, db: MongoStore = Depends(get_db)):
     return [_member_out(db, membership) for membership in memberships]
 
 
+@router.post("/{member_id}/transfer-role", response_model=schemas.AuthStatusResponse)
+def transfer_role(
+    workspace_id: int,
+    member_id: int,
+    payload: schemas.TransferRoleRequest,
+    db: MongoStore = Depends(get_db),
+    _membership=Depends(require_workspace_permission("roles.manage")),
+):
+    outgoing = db.find_one("workspace_members", {"id": member_id, "workspace_id": workspace_id})
+    target = db.find_one("workspace_members", {"id": payload.target_member_id, "workspace_id": workspace_id})
+    role = db.find_one("roles", {"id": payload.role_id, "workspace_id": workspace_id})
+    if not outgoing or not target or not role:
+        raise HTTPException(status_code=404, detail="Role transfer target not found")
+
+    target["role_id"] = role.id
+    target["is_general_member"] = role.key == "core_member"
+    db.save("workspace_members", target)
+
+    if payload.outgoing_member_role_id:
+        fallback = db.find_one("roles", {"id": payload.outgoing_member_role_id, "workspace_id": workspace_id})
+        if fallback:
+            outgoing["role_id"] = fallback.id
+            outgoing["is_general_member"] = fallback.key == "core_member"
+            db.save("workspace_members", outgoing)
+
+    for task in db.find_many("tasks", {"workspace_id": workspace_id, "assigned_to_member_id": outgoing.id}):
+        task["assigned_to_member_id"] = target.id
+        db.save("tasks", task)
+
+    return schemas.AuthStatusResponse(message="Role transferred.")
+
+
 def _member_out(db: MongoStore, membership: models.WorkspaceMember) -> schemas.WorkspaceMemberOut:
     user = db.find_by_id("users", membership.user_id)
     role = db.find_by_id("roles", membership.role_id)

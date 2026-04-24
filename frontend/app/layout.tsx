@@ -1,7 +1,10 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
 export const metadata = {
+  metadataBase: new URL(APP_URL),
   title: "Quorum",
   description: "Student body operating system",
   icons: {

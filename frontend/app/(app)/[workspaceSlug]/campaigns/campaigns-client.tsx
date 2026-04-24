@@ -346,8 +346,8 @@ export default function CampaignsClient({
           </section>
         </>
       ) : (
-        <article className="panel-card">
-          <div className="empty-state">
+        <article className="panel-card campaigns-empty-card">
+          <div className="empty-state campaigns-empty">
             <span className="material-symbols-outlined" aria-hidden="true">
               payments
             </span>

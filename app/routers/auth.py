@@ -1,10 +1,21 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 
+from ..email import send_password_reset_email, send_verification_email
 from .. import models, schemas
 from ..database import MongoStore, get_db
 from ..membership import sync_workspace_members_from_legacy
 from ..rbac import ensure_default_roles, get_current_user, hydrate_user
-from ..security import create_access_token, hash_password, verify_password
+from ..security import (
+    create_access_token,
+    create_email_token,
+    create_refresh_token,
+    create_reset_token,
+    decode_signed_token,
+    hash_password,
+    verify_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -13,7 +24,7 @@ def _auth_response(db: MongoStore, workspace: models.Workspace, membership: mode
     user = db.find_by_id("users", membership.user_id)
     role = db.find_by_id("roles", membership.role_id)
     hydrate_user(db, user)
-    token = create_access_token(str(membership.user_id), {"workspace_id": workspace.id, "member_id": membership.id, "role": role.key})
+    access_token, refresh_token = _issue_session_tokens(db, user.id, workspace.id, membership.id, role.key)
     return schemas.AuthLoginResponse(
         workspace_slug=workspace.slug,
         workspace_name=workspace.name,
@@ -22,7 +33,8 @@ def _auth_response(db: MongoStore, workspace: models.Workspace, membership: mode
         member_role=role.name,
         user_id=membership.user_id,
         role_key=role.key,
-        access_token=token,
+        access_token=access_token,
+        refresh_token=refresh_token,
         workspaces=[_workspace_member_out(item) for item in user.workspace_memberships],
     )
 
@@ -36,6 +48,63 @@ def _workspace_member_out(membership: models.WorkspaceMember) -> schemas.AuthMeW
         role_key=membership.role.key,
         permissions=membership.role.permissions,
     )
+
+
+def _issue_session_tokens(
+    db: MongoStore,
+    user_id: int,
+    workspace_id: int | None,
+    member_id: int | None,
+    role_key: str | None,
+) -> tuple[str, str]:
+    access_token = create_access_token(str(user_id), {"workspace_id": workspace_id, "member_id": member_id, "role": role_key})
+    refresh_token = create_refresh_token(str(user_id), {"workspace_id": workspace_id, "member_id": member_id, "role": role_key})
+    access_payload = decode_signed_token(access_token, expected_type="access")
+    refresh_payload = decode_signed_token(refresh_token, expected_type="refresh")
+    db.insert(
+        "auth_sessions",
+        {
+            "user_id": user_id,
+            "workspace_id": workspace_id,
+            "member_id": member_id,
+            "role_key": role_key,
+            "access_jti": access_payload["jti"] if access_payload else None,
+            "refresh_jti": refresh_payload["jti"] if refresh_payload else None,
+            "expires_at": datetime.utcfromtimestamp(refresh_payload["exp"]) if refresh_payload else None,
+            "revoked_at": None,
+        },
+    )
+    return access_token, refresh_token
+
+
+def _create_email_verification(db: MongoStore, user: models.User) -> None:
+    token = create_email_token(str(user.id))
+    payload = decode_signed_token(token, expected_type="email_verification")
+    db.insert(
+        "email_verification_tokens",
+        {
+            "user_id": user.id,
+            "token": token,
+            "expires_at": datetime.utcfromtimestamp(payload["exp"]) if payload else None,
+            "used_at": None,
+        },
+    )
+    send_verification_email(to_email=user.email, full_name=user.full_name, token=token)
+
+
+def _create_password_reset(db: MongoStore, user: models.User) -> None:
+    token = create_reset_token(str(user.id))
+    payload = decode_signed_token(token, expected_type="password_reset")
+    db.insert(
+        "password_reset_tokens",
+        {
+            "user_id": user.id,
+            "token": token,
+            "expires_at": datetime.utcfromtimestamp(payload["exp"]) if payload else None,
+            "used_at": None,
+        },
+    )
+    send_password_reset_email(to_email=user.email, full_name=user.full_name, token=token)
 
 
 @router.post("/register", response_model=schemas.AuthLoginResponse, status_code=201)
@@ -63,7 +132,7 @@ def register(payload: schemas.AuthRegisterRequest, db: MongoStore = Depends(get_
     )
     workspace = db.insert(
         "workspaces",
-        {"name": payload.organization_name.strip(), "slug": workspace_slug, "description": description},
+        {"name": payload.organization_name.strip(), "slug": workspace_slug, "description": description, "owner_user_id": user.id},
     )
 
     roles = ensure_default_roles(db, workspace.id)
@@ -96,6 +165,7 @@ def register(payload: schemas.AuthRegisterRequest, db: MongoStore = Depends(get_
             "dues_status": "paid",
         },
     )
+    _create_email_verification(db, user)
 
     return _auth_response(db, workspace, membership)
 
@@ -138,7 +208,7 @@ def login(payload: schemas.AuthLoginRequest, db: MongoStore = Depends(get_db)):
         membership = memberships[0]
         return _auth_response(db, membership.workspace, membership)
 
-    token = create_access_token(str(user.id), {"workspace_id": None, "member_id": None, "role": None})
+    access_token, refresh_token = _issue_session_tokens(db, user.id, None, None, None)
     return schemas.AuthLoginResponse(
         workspace_slug="",
         workspace_name="",
@@ -147,7 +217,8 @@ def login(payload: schemas.AuthLoginRequest, db: MongoStore = Depends(get_db)):
         member_role="",
         user_id=user.id,
         role_key=None,
-        access_token=token,
+        access_token=access_token,
+        refresh_token=refresh_token,
         workspaces=[_workspace_member_out(membership) for membership in memberships],
     )
 
@@ -158,3 +229,121 @@ def me(user: models.User = Depends(get_current_user)):
         user=user,
         workspaces=[_workspace_member_out(membership) for membership in user.workspace_memberships],
     )
+
+
+@router.post("/refresh-token", response_model=schemas.AuthLoginResponse)
+def refresh_token(payload: schemas.RefreshTokenRequest, db: MongoStore = Depends(get_db)):
+    refresh_payload = decode_signed_token(payload.refresh_token, expected_type="refresh")
+    if not refresh_payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    session = db.find_one("auth_sessions", {"refresh_jti": refresh_payload["jti"], "revoked_at": None})
+    if not session:
+        raise HTTPException(status_code=401, detail="Refresh session not found")
+
+    user = db.find_by_id("users", int(refresh_payload["sub"]))
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    db.update_one("auth_sessions", {"id": session.id}, {"revoked_at": datetime.utcnow()})
+    access_token, refresh_token_value = _issue_session_tokens(
+        db,
+        user.id,
+        session.get("workspace_id"),
+        session.get("member_id"),
+        session.get("role_key"),
+    )
+
+    if session.get("workspace_id") and session.get("member_id"):
+        workspace = db.find_by_id("workspaces", session.get("workspace_id"))
+        membership = db.find_by_id("workspace_members", session.get("member_id"))
+        role = db.find_by_id("roles", membership.role_id) if membership else None
+        if workspace and membership and role:
+            hydrate_user(db, user)
+            return schemas.AuthLoginResponse(
+                workspace_slug=workspace.slug,
+                workspace_name=workspace.name,
+                member_id=membership.id,
+                member_name=user.full_name,
+                member_role=role.name,
+                user_id=user.id,
+                role_key=role.key,
+                access_token=access_token,
+                refresh_token=refresh_token_value,
+                workspaces=[_workspace_member_out(item) for item in user.workspace_memberships],
+            )
+
+    hydrate_user(db, user)
+    return schemas.AuthLoginResponse(
+        workspace_slug="",
+        workspace_name="",
+        member_id=0,
+        member_name=user.full_name,
+        member_role="",
+        user_id=user.id,
+        role_key=None,
+        access_token=access_token,
+        refresh_token=refresh_token_value,
+        workspaces=[_workspace_member_out(item) for item in user.workspace_memberships],
+    )
+
+
+@router.post("/logout", response_model=schemas.AuthStatusResponse)
+def logout(payload: schemas.LogoutRequest, db: MongoStore = Depends(get_db)):
+    access_payload = decode_signed_token(payload.access_token or "", expected_type="access") if payload.access_token else None
+    refresh_payload = decode_signed_token(payload.refresh_token or "", expected_type="refresh") if payload.refresh_token else None
+
+    if access_payload:
+        if not db.find_one("revoked_tokens", {"jti": access_payload["jti"]}):
+            db.insert(
+                "revoked_tokens",
+                {
+                    "jti": access_payload["jti"],
+                    "expires_at": datetime.utcfromtimestamp(access_payload["exp"]),
+                },
+            )
+    if refresh_payload:
+        db.update_one("auth_sessions", {"refresh_jti": refresh_payload["jti"]}, {"revoked_at": datetime.utcnow()})
+    return schemas.AuthStatusResponse(message="Signed out")
+
+
+@router.post("/forgot-password", response_model=schemas.AuthStatusResponse)
+def forgot_password(payload: schemas.ForgotPasswordRequest, db: MongoStore = Depends(get_db)):
+    user = db.find_one("users", {"email": payload.email.strip().lower()})
+    if user:
+        _create_password_reset(db, user)
+    return schemas.AuthStatusResponse(message="If the account exists, a reset link has been sent.")
+
+
+@router.post("/reset-password", response_model=schemas.AuthStatusResponse)
+def reset_password(payload: schemas.ResetPasswordRequest, db: MongoStore = Depends(get_db)):
+    token_payload = decode_signed_token(payload.token, expected_type="password_reset")
+    if not token_payload:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    reset_record = db.find_one("password_reset_tokens", {"token": payload.token, "used_at": None})
+    if not reset_record:
+        raise HTTPException(status_code=400, detail="Reset token has already been used")
+
+    user = db.find_by_id("users", int(token_payload["sub"]))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.update_one("users", {"id": user.id}, {"password_hash": hash_password(payload.password)})
+    db.update_one("password_reset_tokens", {"id": reset_record.id}, {"used_at": datetime.utcnow()})
+    db.update_one("auth_sessions", {"user_id": user.id, "revoked_at": None}, {"revoked_at": datetime.utcnow()})
+    return schemas.AuthStatusResponse(message="Password updated successfully.")
+
+
+@router.post("/verify-email", response_model=schemas.AuthStatusResponse)
+def verify_email(payload: schemas.VerifyEmailRequest, db: MongoStore = Depends(get_db)):
+    token_payload = decode_signed_token(payload.token, expected_type="email_verification")
+    if not token_payload:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+    verification = db.find_one("email_verification_tokens", {"token": payload.token, "used_at": None})
+    if not verification:
+        raise HTTPException(status_code=400, detail="Verification token has already been used")
+    user = db.find_by_id("users", int(token_payload["sub"]))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.update_one("users", {"id": user.id}, {"email_verified": True})
+    db.update_one("email_verification_tokens", {"id": verification.id}, {"used_at": datetime.utcnow()})
+    return schemas.AuthStatusResponse(message="Email verified.")

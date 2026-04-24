@@ -7,6 +7,7 @@ export type QuorumSession = {
   user_id?: number;
   role_key?: string;
   access_token?: string;
+  refresh_token?: string;
   token_type?: string;
   workspaces?: QuorumWorkspace[];
 };

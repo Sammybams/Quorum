@@ -65,6 +65,46 @@ export default function LoginPage() {
         <Link className="wordmark" href="/">
           <img src="/brand/quorum-wordmark-light.svg" alt="Quorum" />
         </Link>
+        <div className="auth-product-preview" aria-hidden="true">
+          <div className="auth-preview-topline">
+            <span>Sample workspace</span>
+            <strong>Preview</strong>
+          </div>
+          <div className="auth-preview-grid">
+            <div>
+              <span className="material-symbols-outlined">groups</span>
+              <strong>124</strong>
+              <small>Members</small>
+            </div>
+            <div>
+              <span className="material-symbols-outlined">receipt_long</span>
+              <strong>76%</strong>
+              <small>Dues paid</small>
+            </div>
+            <div>
+              <span className="material-symbols-outlined">event</span>
+              <strong>4</strong>
+              <small>Events</small>
+            </div>
+          </div>
+          <div className="auth-preview-list">
+            <div>
+              <span></span>
+              <p>Event registration</p>
+              <strong>Open</strong>
+            </div>
+            <div>
+              <span></span>
+              <p>Dues collection</p>
+              <strong>Tracking</strong>
+            </div>
+            <div>
+              <span></span>
+              <p>Fundraising campaign</p>
+              <strong>Active</strong>
+            </div>
+          </div>
+        </div>
         <div className="auth-visual-copy">
           <p className="eyebrow">Student body operations</p>
           <h1>Where student bodies get things done.</h1>
@@ -127,9 +167,9 @@ export default function LoginPage() {
               <label>
                 <span className="label-row">
                   Password
-                  <a href="#" aria-disabled="true">
+                  <Link href="/forgot-password">
                     Forgot password?
-                  </a>
+                  </Link>
                 </span>
                 <span className="input-shell">
                   <span className="material-symbols-outlined" aria-hidden="true">

@@ -11,6 +11,13 @@ type Announcement = {
   status: string;
   is_pinned: boolean;
   published_at: string | null;
+  scheduled_for?: string | null;
+  delivered_at?: string | null;
+  delivery_count?: number;
+  audience?: string;
+  channels?: string[];
+  target_role_ids?: number[];
+  target_levels?: string[];
   archived_at: string | null;
   created_at: string;
   updated_at: string;

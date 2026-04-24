@@ -1,18 +1,39 @@
-import { apiGet } from "@/lib/api";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getPortalData, buildShortUrl } from "@/lib/api/links";
 
-type PortalData = {
-  workspace: {
-    name: string;
-    slug: string;
-    description?: string;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export async function generateMetadata({ params }: { params: { workspaceSlug: string } }): Promise<Metadata> {
+  const data = await getPortalData(params.workspaceSlug);
+  if (!data) return {};
+
+  const title = `${data.workspace.name} | Quorum`;
+  const description = data.workspace.description || "Links, events, fundraising, and updates from this workspace.";
+  const ogImage = `${APP_URL}/api/og/portal/${data.workspace.slug}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: `${APP_URL}/portal/${data.workspace.slug}`,
+      images: [{ url: ogImage, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
   };
-  links: Array<{ slug: string; destination_url: string; click_count: number }>;
-  events: Array<{ title: string; slug: string; starts_at: string; venue?: string }>;
-  announcements: Array<{ title: string; body: string; is_pinned: boolean; published_at?: string | null }>;
-};
+}
 
 export default async function PortalPage({ params }: { params: { workspaceSlug: string } }) {
-  const data = await apiGet<PortalData>(`/public/portal/${params.workspaceSlug}`);
+  const data = await getPortalData(params.workspaceSlug);
+  if (!data) notFound();
   const featuredAnnouncement = data.announcements.find((announcement) => announcement.is_pinned) || data.announcements[0];
 
   return (
@@ -43,8 +64,8 @@ export default async function PortalPage({ params }: { params: { workspaceSlug: 
           {data.links.length ? (
             <div className="portal-list">
               {data.links.map((link) => (
-                <a key={link.slug} href={`/r/${link.slug}`}>
-                  <span>/{link.slug}</span>
+                <a key={link.slug} href={buildShortUrl(link.slug)}>
+                  <span>{link.title || `/${link.slug}`}</span>
                   <strong>{link.click_count} clicks</strong>
                 </a>
               ))}

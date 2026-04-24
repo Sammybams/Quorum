@@ -1,18 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { apiPost } from "@/lib/api";
 import { clearSession, readSession, saveSession, type QuorumSession, type QuorumWorkspace } from "@/lib/session";
 
 const navItems = [
   { label: "Dashboard", icon: "dashboard", href: "dashboard" },
   { label: "Members", icon: "group", href: "members" },
   { label: "Events", icon: "event", href: "events" },
+  { label: "Meetings", icon: "groups_3", href: "meetings" },
   { label: "Fundraising", icon: "payments", href: "campaigns" },
   { label: "Dues", icon: "receipt_long", href: "dues" },
+  { label: "Budgets", icon: "account_balance", href: "budgets" },
+  { label: "Tasks", icon: "checklist", href: "tasks" },
   { label: "Links", icon: "link", href: "links" },
   { label: "Announcements", icon: "campaign", href: "announcements" },
   { label: "Settings", icon: "settings", href: "settings/roles" },
@@ -27,6 +31,7 @@ export default function WorkspaceLayout({
 }) {
   const base = `/${params.workspaceSlug}`;
   const router = useRouter();
+  const pathname = usePathname();
   const [session, setSession] = useState<QuorumSession | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -66,7 +71,17 @@ export default function WorkspaceLayout({
     };
   }, []);
 
-  function signOut() {
+  async function signOut() {
+    if (session?.refresh_token || session?.access_token) {
+      try {
+        await apiPost("/auth/logout", {
+          refresh_token: session?.refresh_token,
+          access_token: session?.access_token,
+        });
+      } catch {
+        // Best effort logout; local signout still proceeds.
+      }
+    }
     clearSession();
     router.push("/login");
   }
@@ -110,14 +125,20 @@ export default function WorkspaceLayout({
         </Link>
 
         <nav className="nav-list" aria-label="Workspace">
-          {navItems.map((item) => (
-            <Link key={item.href} className="nav-item" href={`${base}/${item.href}`}>
-              <span className="material-symbols-outlined" aria-hidden="true">
-                {item.icon}
-              </span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const href = `${base}/${item.href}`;
+            const section = item.href.split("/")[0];
+            const isActive = pathname === href || pathname.startsWith(`${base}/${section}/`);
+
+            return (
+              <Link key={item.href} className={`nav-item ${isActive ? "active" : ""}`} href={href} aria-current={isActive ? "page" : undefined}>
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="side-nav-actions">
