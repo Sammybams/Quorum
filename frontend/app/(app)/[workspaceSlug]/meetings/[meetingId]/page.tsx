@@ -6,6 +6,66 @@ import { apiGet, apiPost } from "@/lib/api";
 
 type Workspace = { id: number; slug: string; name: string };
 type Integration = { provider: string; status: string; configured: boolean };
+const DEMO_TRANSCRIPT = `
+Nneka Bassey: We have quorum, so let's begin. Today's meeting is focused on Engineering Week execution, especially sponsor follow-up, volunteer assignments, welfare logistics, and publicity deadlines.
+
+Ayo Owolabi: Thank you everyone. We are now ten days away from the opening event, so this meeting needs concrete ownership, not just updates. Tomiwa, start with sponsorship.
+
+Tomiwa Adeyemi: We currently have two confirmed sponsors: TekBridge Systems at three hundred and twenty thousand naira and Ace Robotics at one hundred and eighty thousand naira. The third sponsor, NovaGrid, is interested but wants a revised benefits sheet and confirmation that the exhibition booth power setup is guaranteed.
+
+Ayo Owolabi: What is blocking that revised benefits sheet?
+
+Tomiwa Adeyemi: The sponsor deck still needs the final audience numbers from David and the confirmed booth layout from Daniel.
+
+Daniel Yusuf: The booth layout is ready. I can send that tonight. We are using the faculty quadrangle and the design allows for six sponsor booths, one robotics demo lane, and a central registration point.
+
+David Omotoso: I can update the audience projections once the class-rep circulation numbers are confirmed. Right now we have projected attendance at around six hundred across the week, but I want one clean figure before it goes out to sponsors.
+
+Ayo Owolabi: Fine. Tomiwa, you own the final sponsor tracker. Daniel sends the layout tonight. David sends the cleaned-up audience projection tomorrow morning. Tomiwa sends the revised sponsor pack and escalation tracker by Thursday noon.
+
+Nneka Bassey: Noted. Deadline is Thursday noon for the sponsor escalation tracker and revised sponsor pack.
+
+Amina Bello: On volunteers, we have twenty-three sign-ups, but only twelve have selected shifts. We cannot run registration, ushering, and stage management with that level of uncertainty. I need a rota that people can see clearly by department and by day.
+
+Ayo Owolabi: What do you need to make that happen?
+
+Amina Bello: I need final programme blocks from Daniel and I need David to post the second volunteer call with the closing date.
+
+Daniel Yusuf: I can share the programme block schedule tonight with the booth layout. That should be enough for the rota draft.
+
+David Omotoso: I will push the second volunteer call tonight and pin it. Closing date should be Friday by 5 p.m.
+
+Ayo Owolabi: Good. Amina publishes the volunteer rota draft on Friday morning and locks assignments after Sunday's briefing.
+
+Favour Okonkwo: On refreshments and welfare, I have two vendor quotes already. One is cheaper but cannot guarantee delivery before 8 a.m. The second is more expensive but reliable and can also cover the panel session on Wednesday. I need approval to negotiate with the second vendor and lock pricing before Monday.
+
+Ayo Owolabi: Do we have room in the budget?
+
+Tomiwa Adeyemi: Yes, but only if media printing stays within the approved ceiling. If printing rises, welfare and stage branding start competing for the same buffer.
+
+David Omotoso: Printing will stay within ceiling if the banners are finalised by Saturday. Late changes are what usually increase cost.
+
+Ayo Owolabi: Then the decision is simple: Favour proceeds with the reliable vendor, but gets final sign-off once David confirms printing costs by Saturday afternoon.
+
+Nneka Bassey: Captured. Favour negotiates and returns with final vendor recommendation. David confirms printing costs by Saturday afternoon.
+
+Daniel Yusuf: Another point: the faculty hall inspection needs to happen on Monday. We still need facilities approval for sound and backup power.
+
+Ayo Owolabi: Who is owning that?
+
+Daniel Yusuf: I can take it, but I need a letter from Nneka and a representative from Favour because of crowd-flow and refreshment points.
+
+Nneka Bassey: I will prepare the facilities request letter before close of business tomorrow.
+
+Favour Okonkwo: I will join the inspection on Monday afternoon.
+
+Ayo Owolabi: Good. Final item: communications cadence. We cannot assume people know the sequence of events. David should push one master timetable on Monday and then daily reminders through the week.
+
+David Omotoso: Agreed. I will publish the master timetable once the final programme block is signed off.
+
+Ayo Owolabi: Excellent. To close: Tomiwa handles sponsor escalation. Amina owns the volunteer rota. Favour locks the preferred vendor path. Daniel and Nneka handle facilities approval. David handles timetable and the second volunteer call. We reconvene next Tuesday at 6 p.m. for a final readiness review.
+`.trim();
+
 type MeetingDetail = {
   id: number;
   title: string;
@@ -38,6 +98,11 @@ export default function MeetingDetailPage({ params }: { params: { workspaceSlug:
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function loadDemoTranscript() {
+    setTranscript(DEMO_TRANSCRIPT);
+    setError(null);
+  }
 
   useEffect(() => {
     async function load() {
@@ -287,6 +352,26 @@ export default function MeetingDetailPage({ params }: { params: { workspaceSlug:
               ))}
             </div>
           ) : null}
+          {meeting.action_items.length ? (
+            <div className="meeting-inline-actions">
+              <div className="card-head compact">
+                <h3>Extracted action items</h3>
+                <span className="status-pill">{meeting.action_items.length}</span>
+              </div>
+              <div className="meeting-action-card-grid">
+                {meeting.action_items.map((item) => (
+                  <article key={`inline-${item.id}`} className="meeting-action-card">
+                    <strong>{item.description}</strong>
+                    <div className="meeting-action-meta">
+                      <span>{item.assigned_to_name || "Unassigned"}</span>
+                      <span>{item.due_date || "No due date"}</span>
+                      <span>{item.status}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {meeting.minutes?.content ? <pre className="meeting-minutes-preview">{meeting.minutes.content}</pre> : null}
         </article>
       </section>
@@ -295,15 +380,21 @@ export default function MeetingDetailPage({ params }: { params: { workspaceSlug:
         <article className="panel-card">
           <div className="card-head compact">
             <h2>Transcript</h2>
-            <button type="button" className="btn-secondary" onClick={generateMinutes} disabled={working || !transcript.trim()}>
-              {working ? "Working..." : "Regenerate with Claude"}
-            </button>
+            <div className="inline-input-row">
+              <button type="button" className="btn-ghost" onClick={loadDemoTranscript} disabled={working}>
+                Use demo transcript
+              </button>
+              <button type="button" className="btn-secondary" onClick={generateMinutes} disabled={working || !transcript.trim()}>
+                {working ? "Working..." : "Regenerate with Claude"}
+              </button>
+            </div>
           </div>
           <form className="form-stack" onSubmit={uploadTranscript}>
             <label>
               Paste transcript
               <textarea rows={14} value={transcript} onChange={(event) => setTranscript(event.target.value)} />
             </label>
+            <p className="muted-copy">Use the demo transcript for a realistic extraction run, or paste a real meeting transcript here.</p>
             <button className="btn-primary" disabled={working || !transcript.trim()} type="submit">
               {working ? "Saving..." : "Save transcript and generate minutes"}
             </button>

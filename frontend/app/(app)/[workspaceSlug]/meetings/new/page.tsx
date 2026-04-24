@@ -7,6 +7,10 @@ import { apiGet, apiPost } from "@/lib/api";
 
 type Workspace = { id: number; slug: string; name: string };
 
+function toMeetingTimestamp(value: string) {
+  return value.replace("T", " ");
+}
+
 export default function NewMeetingPage({ params }: { params: { workspaceSlug: string } }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -25,7 +29,7 @@ export default function NewMeetingPage({ params }: { params: { workspaceSlug: st
         `/workspaces/${workspace.id}/meetings`,
         {
           title: title.trim(),
-          scheduled_for: scheduledFor,
+          scheduled_for: toMeetingTimestamp(scheduledFor),
           agenda: agenda
             .split("\n")
             .map((item) => item.trim())
@@ -55,7 +59,12 @@ export default function NewMeetingPage({ params }: { params: { workspaceSlug: st
           </label>
           <label>
             Scheduled for
-            <input value={scheduledFor} onChange={(event) => setScheduledFor(event.target.value)} placeholder="2026-05-01 15:00" required />
+            <input
+              type="datetime-local"
+              value={scheduledFor}
+              onChange={(event) => setScheduledFor(event.target.value)}
+              required
+            />
           </label>
           <label>
             Agenda

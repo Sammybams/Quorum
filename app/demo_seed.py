@@ -395,57 +395,165 @@ def _seed_announcements(db: MongoStore, workspace: models.Workspace) -> None:
 
 
 def _seed_meetings_and_tasks(db: MongoStore, workspace: models.Workspace, memberships: list[models.WorkspaceMember]) -> None:
-    if db.find_many("meetings", {"workspace_id": workspace.id}, limit=1):
-        return
+    rich_transcript = """
+Nneka Bassey: We have quorum, so let's begin. Today's meeting is focused on Engineering Week execution, especially sponsor follow-up, volunteer assignments, welfare logistics, and publicity deadlines.
 
-    meeting = db.insert(
-        "meetings",
-        {
-            "workspace_id": workspace.id,
-            "title": "Engineering Week Planning Council",
-            "meeting_type": "executive",
-            "scheduled_for": "2026-05-01 17:00",
-            "venue": "Dean's Board Room",
-            "virtual_link": "https://meet.google.com/efc-demo-week",
-            "agenda": ["Sponsorship pipeline", "Volunteer assignments", "Welfare logistics"],
-            "quorum_threshold": 5,
-            "status": "minutes_published",
-            "transcript": "Planning session for Engineering Week covering sponsor follow-ups, volunteer assignments, and logistics.",
-            "transcript_source": "demo_seed",
-            "attendee_count": 7,
-            "created_by_user_id": memberships[1].user_id,
-        },
-    )
+Ayo Owolabi: Thank you everyone. We are now ten days away from the opening event, so this meeting needs concrete ownership, not just updates. Tomiwa, start with sponsorship.
 
-    db.insert(
-        "meeting_minutes",
-        {
-            "meeting_id": meeting.id,
-            "summary": "Council aligned on sponsor follow-up, volunteer coordination, and the welfare checklist for Engineering Week.",
-            "content": "Decisions were taken on sponsor escalation, booth logistics, volunteer coordination, and welfare disbursement timing.",
-            "attendance_summary": "7 of 7 executive members present.",
-            "decisions": [
-                "Treasurer to finalize sponsor follow-up sheet by Friday.",
-                "Events coordinator to publish volunteer rota after Sunday briefing.",
-                "Welfare lead to lock refreshment vendors before next review.",
-            ],
-            "ai_status": "published",
-            "generated_by_model": "claude-sonnet-4-20250514",
-            "generated_at": datetime.utcnow() - timedelta(days=3),
-            "generation_error": None,
-            "published_at": datetime.utcnow() - timedelta(days=3),
-            "published_by_user_id": memberships[1].user_id,
-            "updated_at": datetime.utcnow() - timedelta(days=3),
-        },
-    )
+Tomiwa Adeyemi: We currently have two confirmed sponsors: TekBridge Systems at three hundred and twenty thousand naira and Ace Robotics at one hundred and eighty thousand naira. The third sponsor, NovaGrid, is interested but wants a revised benefits sheet and confirmation that the exhibition booth power setup is guaranteed.
+
+Ayo Owolabi: What is blocking that revised benefits sheet?
+
+Tomiwa Adeyemi: The sponsor deck still needs the final audience numbers from David and the confirmed booth layout from Daniel.
+
+Daniel Yusuf: The booth layout is ready. I can send that tonight. We are using the faculty quadrangle and the design allows for six sponsor booths, one robotics demo lane, and a central registration point.
+
+David Omotoso: I can update the audience projections once the class-rep circulation numbers are confirmed. Right now we have projected attendance at around six hundred across the week, but I want one clean figure before it goes out to sponsors.
+
+Ayo Owolabi: Fine. Tomiwa, you own the final sponsor tracker. Daniel sends the layout tonight. David sends the cleaned-up audience projection tomorrow morning. Tomiwa sends the revised sponsor pack and escalation tracker by Thursday noon.
+
+Nneka Bassey: Noted. Deadline is Thursday noon for the sponsor escalation tracker and revised sponsor pack.
+
+Amina Bello: On volunteers, we have twenty-three sign-ups, but only twelve have selected shifts. We cannot run registration, ushering, and stage management with that level of uncertainty. I need a rota that people can see clearly by department and by day.
+
+Ayo Owolabi: What do you need to make that happen?
+
+Amina Bello: I need final programme blocks from Daniel and I need David to post the second volunteer call with the closing date.
+
+Daniel Yusuf: I can share the programme block schedule tonight with the booth layout. That should be enough for the rota draft.
+
+David Omotoso: I will push the second volunteer call tonight and pin it. Closing date should be Friday by 5 p.m.
+
+Ayo Owolabi: Good. Amina publishes the volunteer rota draft on Friday morning and locks assignments after Sunday's briefing.
+
+Favour Okonkwo: On refreshments and welfare, I have two vendor quotes already. One is cheaper but cannot guarantee delivery before 8 a.m. The second is more expensive but reliable and can also cover the panel session on Wednesday. I need approval to negotiate with the second vendor and lock pricing before Monday.
+
+Ayo Owolabi: Do we have room in the budget?
+
+Tomiwa Adeyemi: Yes, but only if media printing stays within the approved ceiling. If printing rises, welfare and stage branding start competing for the same buffer.
+
+David Omotoso: Printing will stay within ceiling if the banners are finalised by Saturday. Late changes are what usually increase cost.
+
+Ayo Owolabi: Then the decision is simple: Favour proceeds with the reliable vendor, but gets final sign-off once David confirms printing costs by Saturday afternoon.
+
+Nneka Bassey: Captured. Favour negotiates and returns with final vendor recommendation. David confirms printing costs by Saturday afternoon.
+
+Daniel Yusuf: Another point: the faculty hall inspection needs to happen on Monday. We still need facilities approval for sound and backup power.
+
+Ayo Owolabi: Who is owning that?
+
+Daniel Yusuf: I can take it, but I need a letter from Nneka and a representative from Favour because of crowd-flow and refreshment points.
+
+Nneka Bassey: I will prepare the facilities request letter before close of business tomorrow.
+
+Favour Okonkwo: I will join the inspection on Monday afternoon.
+
+Ayo Owolabi: Good. Final item: communications cadence. We cannot assume people know the sequence of events. David should push one master timetable on Monday and then daily reminders through the week.
+
+David Omotoso: Agreed. I will publish the master timetable once the final programme block is signed off.
+
+Ayo Owolabi: Excellent. To close: Tomiwa handles sponsor escalation. Amina owns the volunteer rota. Favour locks the preferred vendor path. Daniel and Nneka handle facilities approval. David handles timetable and the second volunteer call. We reconvene next Tuesday at 6 p.m. for a final readiness review.
+""".strip()
+
+    minutes_content = """
+## Attendance
+- 7 of 7 executive members were present and quorum was confirmed at the start of the session.
+
+## Discussion Summary
+- The council reviewed sponsor commitments for Engineering Week and agreed that sponsor follow-up is now a time-sensitive revenue task, not a background item.
+- Volunteer sign-ups are healthy at the top of the funnel, but conversion into actual shift ownership is weak, so the team agreed to move immediately to a rota-driven assignment model.
+- Welfare and media spending were reviewed together to prevent budget spillover between refreshments and printing.
+- Facilities approval for sound, backup power, and crowd-flow was escalated as an operational risk that must be closed before the week begins.
+
+## Decisions
+- Treasurer will send a revised sponsor pack and escalation tracker by Thursday noon after receiving the final audience projection and booth layout.
+- Events Coordinator will publish the volunteer rota draft on Friday morning and lock assignments after Sunday's volunteer briefing.
+- Welfare Director will negotiate with the more reliable vendor and return for final approval once media printing costs are confirmed.
+- Secretary will issue the facilities request letter before close of business tomorrow, and Projects Lead will run the Monday inspection with Welfare present.
+- Publicity Director will publish a master Engineering Week timetable on Monday and maintain daily reminder posts throughout the week.
+
+## Next Steps
+- Sponsor pipeline status should be reviewed again at the readiness meeting next Tuesday.
+- Volunteer conversion and facilities approvals are the two biggest operational watch-outs before launch.
+""".strip()
 
     action_specs = [
-        ("Prepare sponsor escalation tracker", memberships[2].id, "2026-05-03"),
-        ("Publish volunteer rota", memberships[5].id, "2026-05-04"),
-        ("Confirm welfare vendor quotes", memberships[3].id, "2026-05-04"),
+        ("Send revised sponsor pack and escalation tracker", memberships[2].id, "2026-05-03", "in_progress", "high"),
+        ("Publish volunteer rota draft and confirm final assignments", memberships[5].id, "2026-05-04", "todo", "high"),
+        ("Negotiate final refreshment vendor pricing and service window", memberships[3].id, "2026-05-04", "in_progress", "medium"),
+        ("Issue facilities request letter for hall inspection", memberships[1].id, "2026-05-02", "todo", "medium"),
+        ("Publish master timetable and second volunteer call", memberships[6].id, "2026-05-02", "todo", "medium"),
     ]
 
-    for index, (description, assigned_to_member_id, due_date) in enumerate(action_specs, start=1):
+    meeting = db.find_one("meetings", {"workspace_id": workspace.id, "title": "Engineering Week Planning Council"})
+    if meeting is None:
+        meeting = db.insert(
+            "meetings",
+            {
+                "workspace_id": workspace.id,
+                "title": "Engineering Week Planning Council",
+                "meeting_type": "executive",
+                "scheduled_for": "2026-05-01 17:00",
+                "venue": "Dean's Board Room",
+                "virtual_link": "https://meet.google.com/efc-demo-week",
+                "agenda": ["Sponsorship pipeline", "Volunteer assignments", "Welfare logistics", "Facilities approval", "Publicity cadence"],
+                "quorum_threshold": 5,
+                "status": "minutes_published",
+                "transcript": rich_transcript,
+                "transcript_source": "demo_seed",
+                "attendee_count": 7,
+                "created_by_user_id": memberships[1].user_id,
+            },
+        )
+    else:
+        meeting.update(
+            {
+                "meeting_type": "executive",
+                "scheduled_for": "2026-05-01 17:00",
+                "venue": "Dean's Board Room",
+                "virtual_link": "https://meet.google.com/efc-demo-week",
+                "agenda": ["Sponsorship pipeline", "Volunteer assignments", "Welfare logistics", "Facilities approval", "Publicity cadence"],
+                "quorum_threshold": 5,
+                "status": "minutes_published",
+                "transcript": rich_transcript,
+                "transcript_source": "demo_seed",
+                "attendee_count": 7,
+                "created_by_user_id": memberships[1].user_id,
+            }
+        )
+        meeting = db.save("meetings", meeting)
+
+    minutes = db.find_one("meeting_minutes", {"meeting_id": meeting.id})
+    minutes_payload = {
+        "meeting_id": meeting.id,
+        "summary": "Council converted Engineering Week planning into concrete ownership across sponsorship, volunteer operations, welfare, facilities approval, and publicity.",
+        "content": minutes_content,
+        "attendance_summary": "7 of 7 executive members present.",
+        "decisions": [
+            "Tomiwa Adeyemi to send the revised sponsor pack and escalation tracker by Thursday noon.",
+            "Amina Bello to publish the volunteer rota draft on Friday and lock assignments after Sunday's briefing.",
+            "Favour Okonkwo to negotiate the preferred vendor path before the next review.",
+            "Nneka Bassey to issue the facilities request letter before close of business tomorrow.",
+            "David Omotoso to publish the master timetable and second volunteer call on Monday.",
+        ],
+        "ai_status": "published",
+        "generated_by_model": "claude-sonnet-4-20250514",
+        "generated_at": datetime.utcnow() - timedelta(days=3),
+        "generation_error": None,
+        "published_at": datetime.utcnow() - timedelta(days=3),
+        "published_by_user_id": memberships[1].user_id,
+        "updated_at": datetime.utcnow() - timedelta(days=3),
+    }
+    if minutes is None:
+        db.insert("meeting_minutes", minutes_payload)
+    else:
+        minutes.update(minutes_payload)
+        db.save("meeting_minutes", minutes)
+
+    db.delete_many("action_items", {"meeting_id": meeting.id})
+    db.delete_many("tasks", {"workspace_id": workspace.id, "linked_module": "meeting", "linked_id": meeting.id})
+
+    for description, assigned_to_member_id, due_date, status, priority in action_specs:
         db.insert(
             "action_items",
             {
@@ -453,7 +561,7 @@ def _seed_meetings_and_tasks(db: MongoStore, workspace: models.Workspace, member
                 "description": description,
                 "assigned_to_member_id": assigned_to_member_id,
                 "due_date": due_date,
-                "status": "open" if index < 3 else "in_progress",
+                "status": status,
                 "generated_by": "claude",
             },
         )
@@ -463,14 +571,15 @@ def _seed_meetings_and_tasks(db: MongoStore, workspace: models.Workspace, member
             {
                 "workspace_id": workspace.id,
                 "title": description,
-                "description": "Demo follow-up task created from published meeting minutes.",
+                "description": "Demo follow-up task extracted from the Engineering Week planning transcript.",
                 "assigned_to_member_id": assigned_to_member_id,
                 "due_date": due_date,
-                "priority": "high" if index == 1 else "medium",
-                "status": "in_progress" if index == 1 else "todo",
+                "priority": priority,
+                "status": status,
                 "linked_module": "meeting",
                 "linked_id": meeting.id,
                 "created_by_user_id": assignee.user_id if assignee else memberships[1].user_id,
+                "generated_by": "claude",
             },
         )
 

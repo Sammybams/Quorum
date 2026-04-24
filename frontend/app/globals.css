@@ -3464,10 +3464,10 @@ p {
 }
 
 .meeting-minutes-preview {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--surface-low);
+  border: 1px solid var(--outline);
   border-radius: 8px;
-  color: var(--text-primary);
+  color: var(--text);
   font-family: inherit;
   font-size: 12px;
   line-height: 1.6;
@@ -3476,6 +3476,46 @@ p {
   overflow: auto;
   padding: 14px;
   white-space: pre-wrap;
+}
+
+.meeting-inline-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.meeting-action-card-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.meeting-action-card {
+  background: var(--surface-low);
+  border: 1px solid var(--outline);
+  border-radius: 14px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.meeting-action-card strong {
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.meeting-action-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meeting-action-meta span {
+  background: var(--surface-highest);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 6px 10px;
 }
 
 @media (max-width: 980px) {
