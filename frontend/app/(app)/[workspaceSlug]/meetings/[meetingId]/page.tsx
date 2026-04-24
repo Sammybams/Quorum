@@ -286,170 +286,172 @@ export default function MeetingDetailPage({ params }: { params: { workspaceSlug:
       {error ? <p className="form-error">{error}</p> : null}
 
       <section className="content-grid">
-        <article className="panel-card">
-          <h2>Agenda</h2>
-          {meeting.agenda.length ? (
-            <div className="mini-list">
-              {meeting.agenda.map((item) => (
-                <div key={item}>
-                  <span>Agenda</span>
-                  <strong>{item}</strong>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="muted-copy">No agenda items added yet.</p>
-          )}
-          {meeting.virtual_link ? (
-            <div className="mini-list">
-              <div>
-                <span>Virtual link</span>
-                <strong>{meeting.virtual_link}</strong>
-              </div>
-            </div>
-          ) : null}
-        </article>
-
-        <article className="panel-card">
-          <h2>Minutes</h2>
-          {meeting.minutes ? (
-            <div className="mini-list">
-              <div>
-                <span>Status</span>
-                <strong>{meeting.minutes.ai_status}</strong>
-              </div>
-              <div>
-                <span>Model</span>
-                <strong>{meeting.minutes.generated_by_model || "Manual draft"}</strong>
-              </div>
-              <div>
-                <span>Summary</span>
-                <strong>{meeting.minutes.summary || "No summary yet"}</strong>
-              </div>
-              {meeting.minutes.attendance_summary ? (
-                <div>
-                  <span>Attendance</span>
-                  <strong>{meeting.minutes.attendance_summary}</strong>
-                </div>
-              ) : null}
-              {meeting.minutes.generation_error ? (
-                <div>
-                  <span>Error</span>
-                  <strong>{meeting.minutes.generation_error}</strong>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <p className="muted-copy">Upload a transcript to draft minutes.</p>
-          )}
-          {meeting.minutes?.decisions?.length ? (
-            <div className="mini-list">
-              {meeting.minutes.decisions.map((decision, index) => (
-                <div key={`${decision}-${index}`}>
-                  <span>Decision</span>
-                  <strong>{decision}</strong>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {meeting.action_items.length ? (
-            <div className="meeting-inline-actions">
-              <div className="card-head compact">
-                <h3>Extracted action items</h3>
-                <span className="status-pill">{meeting.action_items.length}</span>
-              </div>
-              <div className="meeting-action-card-grid">
-                {meeting.action_items.map((item) => (
-                  <article key={`inline-${item.id}`} className="meeting-action-card">
-                    <strong>{item.description}</strong>
-                    <div className="meeting-action-meta">
-                      <span>{item.assigned_to_name || "Unassigned"}</span>
-                      <span>{item.due_date || "No due date"}</span>
-                      <span>{item.status}</span>
-                    </div>
-                  </article>
+        <div className="side-stack">
+          <article className="panel-card">
+            <h2>Agenda</h2>
+            {meeting.agenda.length ? (
+              <div className="mini-list">
+                {meeting.agenda.map((item) => (
+                  <div key={item}>
+                    <span>Agenda</span>
+                    <strong>{item}</strong>
+                  </div>
                 ))}
               </div>
-            </div>
-          ) : null}
-          {meeting.minutes?.content ? <pre className="meeting-minutes-preview">{meeting.minutes.content}</pre> : null}
-        </article>
-      </section>
+            ) : (
+              <p className="muted-copy">No agenda items added yet.</p>
+            )}
+            {meeting.virtual_link ? (
+              <div className="mini-list">
+                <div>
+                  <span>Virtual link</span>
+                  <strong>{meeting.virtual_link}</strong>
+                </div>
+              </div>
+            ) : null}
+          </article>
 
-      <section className="content-grid">
-        <article className="panel-card">
-          <div className="card-head compact">
-            <h2>Transcript</h2>
-            <div className="inline-input-row">
-              <button type="button" className="btn-ghost" onClick={loadDemoTranscript} disabled={working}>
-                Use demo transcript
-              </button>
-              <button type="button" className="btn-secondary" onClick={generateMinutes} disabled={working || !transcript.trim()}>
-                {working ? "Working..." : "Regenerate with Claude"}
-              </button>
+          <article className="panel-card">
+            <div className="card-head compact">
+              <h2>Transcript</h2>
+              <div className="inline-input-row">
+                <button type="button" className="btn-ghost" onClick={loadDemoTranscript} disabled={working}>
+                  Use demo transcript
+                </button>
+                <button type="button" className="btn-secondary" onClick={generateMinutes} disabled={working || !transcript.trim()}>
+                  {working ? "Working..." : "Regenerate with Claude"}
+                </button>
+              </div>
             </div>
-          </div>
-          <form className="form-stack" onSubmit={uploadTranscript}>
-            <label>
-              Paste transcript
-              <textarea rows={14} value={transcript} onChange={(event) => setTranscript(event.target.value)} />
-            </label>
-            <p className="muted-copy">Use the demo transcript for a realistic extraction run, or paste a real meeting transcript here.</p>
-            <button className="btn-primary" disabled={working || !transcript.trim()} type="submit">
-              {working ? "Saving..." : "Save transcript and generate minutes"}
-            </button>
-          </form>
-          {firefliesConfigured ? (
-            <form className="form-stack" onSubmit={importFirefliesTranscript}>
+            <form className="form-stack" onSubmit={uploadTranscript}>
               <label>
-                Fireflies transcript ID
-                <input value={firefliesTranscriptId} onChange={(event) => setFirefliesTranscriptId(event.target.value)} placeholder="Enter transcript id" />
+                Paste transcript
+                <textarea rows={14} value={transcript} onChange={(event) => setTranscript(event.target.value)} />
               </label>
-              <button className="btn-secondary" disabled={working || !firefliesTranscriptId.trim()} type="submit">
-                {working ? "Importing..." : "Import from Fireflies"}
+              <p className="muted-copy">Use the demo transcript for a realistic extraction run, or paste a real meeting transcript here.</p>
+              <button className="btn-primary" disabled={working || !transcript.trim()} type="submit">
+                {working ? "Saving..." : "Save transcript and generate minutes"}
               </button>
             </form>
-          ) : null}
-        </article>
+            {firefliesConfigured ? (
+              <form className="form-stack" onSubmit={importFirefliesTranscript}>
+                <label>
+                  Fireflies transcript ID
+                  <input value={firefliesTranscriptId} onChange={(event) => setFirefliesTranscriptId(event.target.value)} placeholder="Enter transcript id" />
+                </label>
+                <button className="btn-secondary" disabled={working || !firefliesTranscriptId.trim()} type="submit">
+                  {working ? "Importing..." : "Import from Fireflies"}
+                </button>
+              </form>
+            ) : null}
+          </article>
+        </div>
 
-        <article className="panel-card">
-          <h2>Action items</h2>
-          {meeting.action_items.length ? (
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Description</th>
-                    <th>Assigned</th>
-                    <th>Due</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
+        <div className="side-stack">
+          <article className="panel-card">
+            <h2>Minutes</h2>
+            {meeting.minutes ? (
+              <div className="mini-list">
+                <div>
+                  <span>Status</span>
+                  <strong>{meeting.minutes.ai_status}</strong>
+                </div>
+                <div>
+                  <span>Model</span>
+                  <strong>{meeting.minutes.generated_by_model || "Manual draft"}</strong>
+                </div>
+                <div>
+                  <span>Summary</span>
+                  <strong>{meeting.minutes.summary || "No summary yet"}</strong>
+                </div>
+                {meeting.minutes.attendance_summary ? (
+                  <div>
+                    <span>Attendance</span>
+                    <strong>{meeting.minutes.attendance_summary}</strong>
+                  </div>
+                ) : null}
+                {meeting.minutes.generation_error ? (
+                  <div>
+                    <span>Error</span>
+                    <strong>{meeting.minutes.generation_error}</strong>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <p className="muted-copy">Upload a transcript to draft minutes.</p>
+            )}
+            {meeting.minutes?.decisions?.length ? (
+              <div className="mini-list">
+                {meeting.minutes.decisions.map((decision, index) => (
+                  <div key={`${decision}-${index}`}>
+                    <span>Decision</span>
+                    <strong>{decision}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {meeting.action_items.length ? (
+              <div className="meeting-inline-actions">
+                <div className="card-head compact">
+                  <h3>Extracted action items</h3>
+                  <span className="status-pill">{meeting.action_items.length}</span>
+                </div>
+                <div className="meeting-action-card-grid">
                   {meeting.action_items.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        {item.description}
-                        {item.generated_by === "anthropic" ? <div className="muted-copy">Generated by Claude</div> : null}
-                      </td>
-                      <td>{item.assigned_to_name || "-"}</td>
-                      <td>{item.due_date || "-"}</td>
-                      <td>{item.status}</td>
-                    </tr>
+                    <article key={`inline-${item.id}`} className="meeting-action-card">
+                      <strong>{item.description}</strong>
+                      <div className="meeting-action-meta">
+                        <span>{item.assigned_to_name || "Unassigned"}</span>
+                        <span>{item.due_date || "No due date"}</span>
+                        <span>{item.status}</span>
+                      </div>
+                    </article>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="empty-block">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                checklist
-              </span>
-              <h3>No action items yet</h3>
-              <p>Save a transcript and Claude will draft action items from the meeting.</p>
-            </div>
-          )}
-        </article>
+                </div>
+              </div>
+            ) : null}
+            {meeting.minutes?.content ? <pre className="meeting-minutes-preview">{meeting.minutes.content}</pre> : null}
+          </article>
+
+          <article className="panel-card">
+            <h2>Action items</h2>
+            {meeting.action_items.length ? (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Description</th>
+                      <th>Assigned</th>
+                      <th>Due</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {meeting.action_items.map((item) => (
+                      <tr key={item.id}>
+                        <td>
+                          {item.description}
+                          {item.generated_by === "anthropic" ? <div className="muted-copy">Generated by Claude</div> : null}
+                        </td>
+                        <td>{item.assigned_to_name || "-"}</td>
+                        <td>{item.due_date || "-"}</td>
+                        <td>{item.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-block">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  checklist
+                </span>
+                <h3>No action items yet</h3>
+                <p>Save a transcript and Claude will draft action items from the meeting.</p>
+              </div>
+            )}
+          </article>
+        </div>
       </section>
     </section>
   );

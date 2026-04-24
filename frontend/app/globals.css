@@ -1466,6 +1466,7 @@ p {
 }
 
 .content-grid {
+  align-items: start;
   display: grid;
   gap: 10px;
   grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.9fr);
